@@ -97,12 +97,39 @@ def test_cli_prints_valid_json_with_disclaimer(tmp_path):
     assert out["density_per_1k"] > 0
 
 
-def test_cli_no_text_pdf_exits_2_with_error_code(tmp_path):
-    p = tmp_path / "empty.pdf"
+def _blank_pdf() -> bytes:
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for i, o in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + o + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objs) + 1}\n".encode() + b"0000000000 65535 f \n"
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += f"trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return out
+
+
+def test_cli_no_text_pdf_exits_2_with_no_text_extracted(tmp_path):
+    p = tmp_path / "blank.pdf"
+    p.write_bytes(_blank_pdf())
+    res = subprocess.run([sys.executable, "-I", str(SCAN_PY), str(p)], capture_output=True)
+    assert res.returncode == 2
+    assert json.loads(res.stdout.decode("utf-8")) == {"error": "no_text_extracted"}
+
+
+def test_cli_malformed_pdf_exits_2_with_unreadable_file(tmp_path):
+    p = tmp_path / "bad.pdf"
     p.write_bytes(b"%PDF-1.4\n%%EOF\n")
     res = subprocess.run([sys.executable, "-I", str(SCAN_PY), str(p)], capture_output=True)
     assert res.returncode == 2
-    assert "error" in json.loads(res.stdout.decode("utf-8"))
+    assert json.loads(res.stdout.decode("utf-8")) == {"error": "unreadable_file"}
 
 
 def test_profile_filters_patterns(tmp_path):
