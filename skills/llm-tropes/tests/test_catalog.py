@@ -47,8 +47,28 @@ def test_attribution_file_names_every_source_used():
     names = {n for p in load_patterns(DATA) for n in source_names(p.source)}
     assert names
     for n in names:
-        assert n in text, n
+        # whole-name match on word boundaries; fails if a source is not defined in ATTRIBUTION.md
+        assert re.search(r"(?<![\w/])" + re.escape(n) + r"(?![\w])", text), f"{n} not defined in ATTRIBUTION.md"
     assert "CC BY-SA 4.0" in text and "MIT" in text
+
+
+def test_conclusion_and_transition_fire_at_line_start_only_where_expected():
+    from extract import Line
+    from scan import find_hits
+
+    doc = [
+        "# Results",
+        "In conclusion, we recommend X.",
+        "",
+        "## Discussion",
+        "Moreover, the results hold.",
+        "We said that in conclusion, nothing changed.",
+    ]
+    lines = [Line(no=i + 1, text=t) for i, t in enumerate(doc)]
+    hits = {(f.pattern_id, f.line) for f in find_hits(lines, load_patterns(DATA))}
+    assert ("signposted-conclusion", 2) in hits
+    assert ("filler-transitions", 5) in hits
+    assert not any(pid == "signposted-conclusion" and ln == 6 for pid, ln in hits)
 
 
 def test_example_matches_its_own_regex():

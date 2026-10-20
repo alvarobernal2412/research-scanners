@@ -10,12 +10,16 @@ Entries in `patterns_wikipedia.json` are derived from the Wikipedia page "Signs 
 
 ## MIT-licensed sources
 
-Used with the MIT notice retained: "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the Software), to deal in the Software without restriction, subject to the inclusion of the copyright notice and this permission notice in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND."
+License and copyright lines verified from each repository's LICENSE file on 2026-10-20. Entries credited to these sources are reworded ideas (categories, phrase types, metrics), not copied text; the notices are retained anyway.
 
-- **FeedHive** - https://github.com/FeedHive/ai-slop-detector (MIT), copyright its authors. Category ideas and chatbot-residue signals.
-- **wsc** - MIT-licensed deterministic rule detectors for AI-writing signals; rule-category ideas, copyright its authors.
-- **blader/humanizer** - https://github.com/blader/humanizer (MIT), copyright its authors. Phrase-level signals.
-- **Aboudjem** - https://github.com/Aboudjem/humanizer-skill (MIT), copyright its authors. Weighted-metrics idea (burstiness, MATTR, trigram repetition) and filler phrasing. Its P1-P30 list is itself CC BY-SA derived from Wikipedia and is not copied here.
+- **FeedHive** - https://github.com/FeedHive/ai-slop-detector - MIT License, "Copyright (c) 2026 FeedHive".
+- **wsc** - https://github.com/theserverlessdev/wsc - MIT License, "Copyright (c) 2025-2026 Ankur Singh".
+- **blader/humanizer** - https://github.com/blader/humanizer - MIT License, "Copyright (c) 2025 Siqi Chen".
+- **Aboudjem** - https://github.com/Aboudjem/humanizer-skill - MIT License, "Copyright (c) 2026 Adam Boudjemaa". Its P1-P30 list is itself CC BY-SA derived from Wikipedia, so any entry crediting Aboudjem together with Wikipedia lives in `patterns_wikipedia.json`.
+
+MIT permission notice (applies to each of the four copyright holders above):
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Other
 

@@ -183,7 +183,7 @@
  {
   "id": "signposted-conclusion",
   "category": "document",
-  "regex": "^\\s*(?:in conclusion|in summary|to sum up|overall,)",
+  "regex": "(?m)^\\s*(?:in conclusion|in summary|to sum up|overall,)",
   "weight": 1.5,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
   "explanation": "Paragraph that announces it is a conclusion and repeats earlier points.",
@@ -192,7 +192,7 @@
  {
   "id": "filler-transitions",
   "category": "structural",
-  "regex": "(?:^|[.!?]\\s+)(?:importantly|notably|moreover|furthermore|additionally),\\s",
+  "regex": "(?m)(?:^\\s*|[.!?]\\s+)(?:importantly|notably|moreover|furthermore|additionally),\\s",
   "weight": 0.6,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
   "explanation": "Sentence-initial filler transitions; weak alone.",
@@ -217,5 +217,14 @@
   "explanation": "Unicode arrows in prose.",
   "example": "Input → output",
   "contested": true
+ },
+ {
+  "id": "magic-nouns-ecosystem",
+  "category": "lexical",
+  "regex": "\\b(?:rich tapestry|dynamic ecosystem|ever-changing landscape|vibrant ecosystem|navigating the (?:complexities|landscape))\\b",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
+  "explanation": "Metaphorical filler nouns.",
+  "example": "Navigating the complexities of modern work."
  }
 ]

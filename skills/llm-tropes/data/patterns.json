@@ -18,15 +18,6 @@
   "example": "It was a perfect storm of factors."
  },
  {
-  "id": "magic-nouns-ecosystem",
-  "category": "lexical",
-  "regex": "\\b(?:rich tapestry|dynamic ecosystem|ever-changing landscape|vibrant ecosystem|navigating the (?:complexities|landscape))\\b",
-  "weight": 1.2,
-  "source": "FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT); Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
-  "explanation": "Metaphorical filler nouns.",
-  "example": "Navigating the complexities of modern work."
- },
- {
   "id": "excess-vocabulary-density",
   "category": "lexical",
   "regex": null,
