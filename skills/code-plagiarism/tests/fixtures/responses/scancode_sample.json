@@ -1,0 +1,1352 @@
+{
+  "headers": [
+    {
+      "tool_name": "scancode-toolkit",
+      "tool_version": "32.5.0",
+      "options": {
+        "input": [
+          "sample50"
+        ],
+        "--copyright": true,
+        "--info": true,
+        "--json-pp": "out/sc.json",
+        "--license": true,
+        "--only-findings": false,
+        "--package": true,
+        "--processes": "4"
+      },
+      "notice": "Generated with ScanCode and provided on an \"AS IS\" BASIS, WITHOUT WARRANTIES\nOR CONDITIONS OF ANY KIND, either express or implied. No content created from\nScanCode should be considered or used as legal advice. Consult an Attorney\nfor any legal advice.\nScanCode is a free software code scanning tool from nexB Inc. and others.\nVisit https://github.com/nexB/scancode-toolkit/ for support and download.",
+      "start_timestamp": "2026-10-20T084824.946391",
+      "end_timestamp": "2026-10-20T084835.485068",
+      "output_format_version": "4.1.0",
+      "duration": 10.538702487945557,
+      "message": null,
+      "errors": [],
+      "warnings": [],
+      "extra_data": {
+        "system_environment": {
+          "operating_system": "win",
+          "cpu_architecture": "64",
+          "platform": "Windows-11-10.0.26200-SP0",
+          "platform_version": "10.0.26200",
+          "python_version": "3.13.11 (tags/v3.13.11:6278944, Dec  5 2025, 16:26:58) [MSC v.1944 64 bit (AMD64)]"
+        },
+        "spdx_license_list_version": "3.27",
+        "files_count": 50
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "sample50/C3_so_with_attribution.js",
+      "type": "file",
+      "name": "C3_so_with_attribution.js",
+      "base_name": "C3_so_with_attribution",
+      "extension": ".js",
+      "size": 534,
+      "date": "2026-10-20",
+      "sha1": "e95ac38d9017b45fb2f0ded1af273a0d12571e96",
+      "md5": "2b7af4b52063d49222e924fad8f00e1c",
+      "sha256": "f515428b54e7dae4ccf331f85f7f8726fb9e28ada1b3c87fa5d004929a10a02e",
+      "sha1_git": "9413482e852fa1fd3d06b18acb1ee9b9250d3aa6",
+      "mime_type": "text/plain",
+      "file_type": "ASCII text",
+      "programming_language": "JavaScript",
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": true,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": "cc-by-sa-4.0",
+      "detected_license_expression_spdx": "CC-BY-SA-4.0",
+      "license_detections": [
+        {
+          "license_expression": "cc-by-sa-4.0",
+          "license_expression_spdx": "CC-BY-SA-4.0",
+          "matches": [
+            {
+              "license_expression": "cc-by-sa-4.0",
+              "license_expression_spdx": "CC-BY-SA-4.0",
+              "from_file": "sample50/C3_so_with_attribution.js",
+              "start_line": 1,
+              "end_line": 1,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 5,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "cc-by-sa-4.0_6.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/cc-by-sa-4.0_6.RULE"
+            }
+          ],
+          "identifier": "cc_by_sa_4_0-d8e08116-0ee0-ebc1-63b8-1bb305e8466e"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 7.46,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C4_attrs_filters_MIT.py",
+      "type": "file",
+      "name": "C4_attrs_filters_MIT.py",
+      "base_name": "C4_attrs_filters_MIT",
+      "extension": ".py",
+      "size": 1795,
+      "date": "2026-10-20",
+      "sha1": "7882d1e7de0239780f644baade84ad14fb5eb596",
+      "md5": "eb85ac22144f1b1eedbbf5e83f5df7d6",
+      "sha256": "64188a58ba774742df099b2aed7d75a67f565fc36c952db05cce23b272ce19cf",
+      "sha1_git": "689b1705a60ff110d6077bab996f8b4588e55b82",
+      "mime_type": "text/x-script.python",
+      "file_type": "Python script, ASCII text executable",
+      "programming_language": "Python",
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": true,
+      "is_script": true,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C4_attrs_filters_MIT.py",
+              "start_line": 1,
+              "end_line": 1,
+              "matcher": "1-spdx-id",
+              "score": 100.0,
+              "matched_length": 4,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "spdx-license-identifier-mit-f5be3fda2f20a26515ed3dabedb3804346819bf7",
+              "rule_url": null
+            }
+          ],
+          "identifier": "mit-70c99094-5482-8374-7f01-91df318346a5"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 1.83,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored",
+      "type": "directory",
+      "name": "C6_vendored",
+      "base_name": "C6_vendored",
+      "extension": "",
+      "size": 0,
+      "date": null,
+      "sha1": null,
+      "md5": null,
+      "sha256": null,
+      "sha1_git": null,
+      "mime_type": null,
+      "file_type": null,
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": false,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": null,
+      "detected_license_expression_spdx": null,
+      "license_detections": [],
+      "license_clues": [],
+      "percentage_of_license_text": 0,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 9,
+      "dirs_count": 3,
+      "size_count": 15569,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/package.json",
+      "type": "file",
+      "name": "package.json",
+      "base_name": "package",
+      "extension": ".json",
+      "size": 99,
+      "date": "2026-10-20",
+      "sha1": "f0fcb10a4f2ad195e671f6721d51cbded11459ed",
+      "md5": "bcd1540612a58ba2f6948a0d6401f67f",
+      "sha256": "60e599eb516296768700dcd63bc02417d3bb16af28f86bdae35b01e2679cd396",
+      "sha1_git": "8159656694c1ac268d741347ddffc4c62d85848b",
+      "mime_type": "application/json",
+      "file_type": "JSON data",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [
+        {
+          "type": "npm",
+          "namespace": null,
+          "name": "c6-demo",
+          "version": "1.0.0",
+          "qualifiers": {},
+          "subpath": null,
+          "primary_language": "JavaScript",
+          "description": null,
+          "release_date": null,
+          "parties": [],
+          "keywords": [],
+          "homepage_url": null,
+          "download_url": "https://registry.npmjs.org/c6-demo/-/c6-demo-1.0.0.tgz",
+          "size": null,
+          "sha1": null,
+          "md5": null,
+          "sha256": null,
+          "sha512": null,
+          "bug_tracking_url": null,
+          "code_view_url": null,
+          "vcs_url": null,
+          "copyright": null,
+          "holder": null,
+          "declared_license_expression": "mit",
+          "declared_license_expression_spdx": "MIT",
+          "license_detections": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "matches": [
+                {
+                  "license_expression": "mit",
+                  "license_expression_spdx": "MIT",
+                  "from_file": "sample50/C6_vendored/package.json",
+                  "start_line": 1,
+                  "end_line": 1,
+                  "matcher": "1-spdx-id",
+                  "score": 100.0,
+                  "matched_length": 1,
+                  "match_coverage": 100.0,
+                  "rule_relevance": 100,
+                  "rule_identifier": "spdx-license-identifier-mit-5da48780aba670b0860c46d899ed42a0f243ff06",
+                  "rule_url": null,
+                  "matched_text": "MIT"
+                }
+              ],
+              "identifier": "mit-a822f434-d61f-f2b1-c792-8b8cb9e7b9bf"
+            }
+          ],
+          "other_license_expression": null,
+          "other_license_expression_spdx": null,
+          "other_license_detections": [],
+          "extracted_license_statement": "- MIT\n",
+          "notice_text": null,
+          "source_packages": [],
+          "file_references": [],
+          "is_private": false,
+          "is_virtual": false,
+          "extra_data": {},
+          "dependencies": [
+            {
+              "purl": "pkg:npm/is-odd",
+              "extracted_requirement": "3.0.1",
+              "scope": "dependencies",
+              "is_runtime": true,
+              "is_optional": false,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            }
+          ],
+          "repository_homepage_url": "https://www.npmjs.com/package/c6-demo",
+          "repository_download_url": "https://registry.npmjs.org/c6-demo/-/c6-demo-1.0.0.tgz",
+          "api_data_url": "https://registry.npmjs.org/c6-demo/1.0.0",
+          "datasource_id": "npm_package_json",
+          "purl": "pkg:npm/c6-demo@1.0.0"
+        }
+      ],
+      "for_packages": [
+        "pkg:npm/c6-demo@1.0.0?uuid=cc595404-a819-4851-99ce-df143c844e01"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/package.json",
+              "start_line": 1,
+              "end_line": 1,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 2,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_30.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_30.RULE"
+            }
+          ],
+          "identifier": "mit-3fce6ea2-8abd-6c6b-3ede-a37af7c6efee"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 13.33,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules",
+      "type": "directory",
+      "name": "node_modules",
+      "base_name": "node_modules",
+      "extension": "",
+      "size": 0,
+      "date": null,
+      "sha1": null,
+      "md5": null,
+      "sha256": null,
+      "sha1_git": null,
+      "mime_type": null,
+      "file_type": null,
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": false,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": null,
+      "detected_license_expression_spdx": null,
+      "license_detections": [],
+      "license_clues": [],
+      "percentage_of_license_text": 0,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 8,
+      "dirs_count": 2,
+      "size_count": 15470,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-number",
+      "type": "directory",
+      "name": "is-number",
+      "base_name": "is-number",
+      "extension": "",
+      "size": 0,
+      "date": null,
+      "sha1": null,
+      "md5": null,
+      "sha256": null,
+      "sha1_git": null,
+      "mime_type": null,
+      "file_type": null,
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": false,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": null,
+      "detected_license_expression_spdx": null,
+      "license_detections": [],
+      "license_clues": [],
+      "percentage_of_license_text": 0,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 4,
+      "dirs_count": 0,
+      "size_count": 8960,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-number/index.js",
+      "type": "file",
+      "name": "index.js",
+      "base_name": "index",
+      "extension": ".js",
+      "size": 662,
+      "date": "2026-10-20",
+      "sha1": "119e5991b6e828424197077e937fbd86fcca0b62",
+      "md5": "3c42333987ad7ac718050a9bf7c1eaf8",
+      "sha256": "b3737d5c585fcc98ef90fbbcce53e69a997c46372411abe56809ace68ac04593",
+      "sha1_git": "a1ea391ee081d61686677c531abfd27001a0e5bb",
+      "mime_type": "text/plain",
+      "file_type": "ASCII text",
+      "programming_language": "JavaScript",
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": true,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-number@6.0.0?uuid=9f9c289e-c1a5-469f-8654-4a58d0d66f13"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-number/index.js",
+              "start_line": 5,
+              "end_line": 5,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 5,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_16.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_16.RULE"
+            }
+          ],
+          "identifier": "mit-2ec3be1d-cba0-a45c-cc38-262489fb9a64"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 5.81,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2014-2018, Jon Schlinkert",
+          "start_line": 4,
+          "end_line": 4
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 4,
+          "end_line": 4
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-number/LICENSE",
+      "type": "file",
+      "name": "LICENSE",
+      "base_name": "LICENSE",
+      "extension": "",
+      "size": 1088,
+      "date": "2026-10-20",
+      "sha1": "8e9f50463a3d515808c3a428e18049425d584c1c",
+      "md5": "ccdc0959f67943eb090f7e7c299621af",
+      "sha256": "e70ff771504ba41f2be55de812a017ff46433d7a250c862e38fc419159e44500",
+      "sha1_git": "d32ab4426a5f6bd7986ed80df4073bbf997903d1",
+      "mime_type": "text/plain",
+      "file_type": "ASCII text",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-number@6.0.0?uuid=9f9c289e-c1a5-469f-8654-4a58d0d66f13"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-number/LICENSE",
+              "start_line": 1,
+              "end_line": 1,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 4,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_26.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_26.RULE"
+            },
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-number/LICENSE",
+              "start_line": 5,
+              "end_line": 21,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 161,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit.LICENSE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/licenses/mit.LICENSE"
+            }
+          ],
+          "identifier": "mit-86fcf017-3572-9813-b7e8-0a10ec4a120f"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 96.49,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2014-2018, Jon Schlinkert",
+          "start_line": 3,
+          "end_line": 3
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 3,
+          "end_line": 3
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-number/package.json",
+      "type": "file",
+      "name": "package.json",
+      "base_name": "package",
+      "extension": ".json",
+      "size": 1444,
+      "date": "2026-10-20",
+      "sha1": "e738c1638549c43981bc44ae0e5fed4ac94b5c41",
+      "md5": "a3fa663b760a3bc0c2d97c990894907c",
+      "sha256": "e8338567d663a42f933a41b3a465b36a9f7c1bd5cbf3ce43b695a806bdcfd38d",
+      "sha1_git": "dd28347066898d887d9af624079470b6fa2aff95",
+      "mime_type": "application/json",
+      "file_type": "JSON data",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [
+        {
+          "type": "npm",
+          "namespace": null,
+          "name": "is-number",
+          "version": "6.0.0",
+          "qualifiers": {},
+          "subpath": null,
+          "primary_language": "JavaScript",
+          "description": "Returns true if the value is a number. comprehensive tests.",
+          "release_date": null,
+          "parties": [
+            {
+              "type": "person",
+              "role": "author",
+              "name": "Jon Schlinkert",
+              "email": null,
+              "url": "https://github.com/jonschlinkert"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Jon Schlinkert",
+              "email": null,
+              "url": "http://twitter.com/jonschlinkert"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Olsten Larck",
+              "email": null,
+              "url": "https://i.am.charlike.online"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Rouven We\u00dfling",
+              "email": null,
+              "url": "www.rouvenwessling.de"
+            }
+          ],
+          "keywords": [
+            "check",
+            "coerce",
+            "coercion",
+            "integer",
+            "is",
+            "is-nan",
+            "is-num",
+            "is-number",
+            "istype",
+            "kind",
+            "math",
+            "nan",
+            "num",
+            "number",
+            "numeric",
+            "test",
+            "type",
+            "typeof",
+            "value"
+          ],
+          "homepage_url": "https://github.com/jonschlinkert/is-number",
+          "download_url": "https://registry.npmjs.org/is-number/-/is-number-6.0.0.tgz",
+          "size": null,
+          "sha1": null,
+          "md5": null,
+          "sha256": null,
+          "sha512": null,
+          "bug_tracking_url": "https://github.com/jonschlinkert/is-number/issues",
+          "code_view_url": null,
+          "vcs_url": "https://github.com/jonschlinkert/is-number",
+          "copyright": null,
+          "holder": null,
+          "declared_license_expression": "mit",
+          "declared_license_expression_spdx": "MIT",
+          "license_detections": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "matches": [
+                {
+                  "license_expression": "mit",
+                  "license_expression_spdx": "MIT",
+                  "from_file": "sample50/C6_vendored/node_modules/is-number/package.json",
+                  "start_line": 1,
+                  "end_line": 1,
+                  "matcher": "1-spdx-id",
+                  "score": 100.0,
+                  "matched_length": 1,
+                  "match_coverage": 100.0,
+                  "rule_relevance": 100,
+                  "rule_identifier": "spdx-license-identifier-mit-5da48780aba670b0860c46d899ed42a0f243ff06",
+                  "rule_url": null,
+                  "matched_text": "MIT"
+                }
+              ],
+              "identifier": "mit-a822f434-d61f-f2b1-c792-8b8cb9e7b9bf"
+            }
+          ],
+          "other_license_expression": null,
+          "other_license_expression_spdx": null,
+          "other_license_detections": [],
+          "extracted_license_statement": "- MIT\n",
+          "notice_text": null,
+          "source_packages": [],
+          "file_references": [],
+          "is_private": false,
+          "is_virtual": false,
+          "extra_data": {
+            "engines": {
+              "node": ">=0.10.0"
+            }
+          },
+          "dependencies": [
+            {
+              "purl": "pkg:npm/benchmarked",
+              "extracted_requirement": "^2.0.0",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            },
+            {
+              "purl": "pkg:npm/chalk",
+              "extracted_requirement": "^2.1.0",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            },
+            {
+              "purl": "pkg:npm/gulp-format-md",
+              "extracted_requirement": "^1.0.0",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            },
+            {
+              "purl": "pkg:npm/mocha",
+              "extracted_requirement": "^3.0.1",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            }
+          ],
+          "repository_homepage_url": "https://www.npmjs.com/package/is-number",
+          "repository_download_url": "https://registry.npmjs.org/is-number/-/is-number-6.0.0.tgz",
+          "api_data_url": "https://registry.npmjs.org/is-number/6.0.0",
+          "datasource_id": "npm_package_json",
+          "purl": "pkg:npm/is-number@6.0.0"
+        }
+      ],
+      "for_packages": [
+        "pkg:npm/is-number@6.0.0?uuid=9f9c289e-c1a5-469f-8654-4a58d0d66f13"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-number/package.json",
+              "start_line": 16,
+              "end_line": 16,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 2,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_30.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_30.RULE"
+            }
+          ],
+          "identifier": "mit-3fce6ea2-8abd-6c6b-3ede-a37af7c6efee"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 1.38,
+      "copyrights": [],
+      "holders": [],
+      "authors": [
+        {
+          "author": "Jon Schlinkert (https://github.com/jonschlinkert) contributors' Jon Schlinkert (http://twitter.com/jonschlinkert) Olsten Larck (https://i.am.charlike.online) Rouven Wessling (www.rouvenwessling.de)",
+          "start_line": 6,
+          "end_line": 10
+        }
+      ],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-number/README.md",
+      "type": "file",
+      "name": "README.md",
+      "base_name": "README",
+      "extension": ".md",
+      "size": 5766,
+      "date": "2026-10-20",
+      "sha1": "3911bde09b77c2f355bd1cd121a18b4bb44d0136",
+      "md5": "79ff0ef25c84f9951f396ed40d92887a",
+      "sha256": "5b9d1683ae13d50b0dd70c5d60f0c02a8856cfeaab16d099aaf121350d36579a",
+      "sha1_git": "9570020a61802a8d906034ac93ef14c5b3cfbe07",
+      "mime_type": "text/plain",
+      "file_type": "UTF-8 Unicode text, with very long lines",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-number@6.0.0?uuid=9f9c289e-c1a5-469f-8654-4a58d0d66f13"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-number/README.md",
+              "start_line": 148,
+              "end_line": 148,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 5,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_16.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_16.RULE"
+            }
+          ],
+          "identifier": "mit-2ec3be1d-cba0-a45c-cc38-262489fb9a64"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 0.64,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2018, Jon Schlinkert (https://github.com/jonschlinkert)",
+          "start_line": 147,
+          "end_line": 147
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 147,
+          "end_line": 147
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-odd",
+      "type": "directory",
+      "name": "is-odd",
+      "base_name": "is-odd",
+      "extension": "",
+      "size": 0,
+      "date": null,
+      "sha1": null,
+      "md5": null,
+      "sha256": null,
+      "sha1_git": null,
+      "mime_type": null,
+      "file_type": null,
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": false,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [],
+      "detected_license_expression": null,
+      "detected_license_expression_spdx": null,
+      "license_detections": [],
+      "license_clues": [],
+      "percentage_of_license_text": 0,
+      "copyrights": [],
+      "holders": [],
+      "authors": [],
+      "files_count": 4,
+      "dirs_count": 0,
+      "size_count": 6510,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-odd/index.js",
+      "type": "file",
+      "name": "index.js",
+      "base_name": "index",
+      "extension": ".js",
+      "size": 543,
+      "date": "2026-10-20",
+      "sha1": "2e4a62cacfe3376995f4066f4f109296fae220b2",
+      "md5": "508f8b6d3790b8210f05b7dadc145b5e",
+      "sha256": "0f9e8227a22ef8abaf1aee8f82d7cc802964d44c9347ed4bbbaf8c427d19a995",
+      "sha1_git": "79d1f22a8e7a27efb8841bb83cb682ea1ff3a59c",
+      "mime_type": "text/plain",
+      "file_type": "ASCII text",
+      "programming_language": "JavaScript",
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": true,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-odd@3.0.1?uuid=3af935ec-d795-47be-9378-b2b3d2e0b90e"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-odd/index.js",
+              "start_line": 5,
+              "end_line": 5,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 5,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_16.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_16.RULE"
+            }
+          ],
+          "identifier": "mit-2ec3be1d-cba0-a45c-cc38-262489fb9a64"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 7.14,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2015-2017, Jon Schlinkert",
+          "start_line": 4,
+          "end_line": 4
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 4,
+          "end_line": 4
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-odd/LICENSE",
+      "type": "file",
+      "name": "LICENSE",
+      "base_name": "LICENSE",
+      "extension": "",
+      "size": 1091,
+      "date": "2026-10-20",
+      "sha1": "854b3338311dea708e157b6848b071e2faf09e72",
+      "md5": "b561e0a423bedc9d9ca9c8c67d40abb9",
+      "sha256": "e7d1fee7347ffddccc5fd03327ffdb50f8c112be0d5016d62388a92c4ae6e7a9",
+      "sha1_git": "7cccaf9e345e50544c2e3215553395c2d37258a1",
+      "mime_type": "text/plain",
+      "file_type": "ASCII text",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-odd@3.0.1?uuid=3af935ec-d795-47be-9378-b2b3d2e0b90e"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-odd/LICENSE",
+              "start_line": 1,
+              "end_line": 1,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 4,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_26.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_26.RULE"
+            },
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-odd/LICENSE",
+              "start_line": 5,
+              "end_line": 21,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 161,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit.LICENSE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/licenses/mit.LICENSE"
+            }
+          ],
+          "identifier": "mit-86fcf017-3572-9813-b7e8-0a10ec4a120f"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 96.49,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2015-present, Jon Schlinkert",
+          "start_line": 3,
+          "end_line": 3
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 3,
+          "end_line": 3
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-odd/package.json",
+      "type": "file",
+      "name": "package.json",
+      "base_name": "package",
+      "extension": ".json",
+      "size": 1381,
+      "date": "2026-10-20",
+      "sha1": "dbea92dd5d1b35ad857f8ae1cddddb554c1505ff",
+      "md5": "72c4e0efb51527353426f8e4374bc848",
+      "sha256": "5ecb92855f47dd9e225d37437e50f76c9fd41eda3d978d1d416066eadf1dc75c",
+      "sha1_git": "8ed23d06552a1f5d101f6f0428305882d8f9590c",
+      "mime_type": "application/json",
+      "file_type": "JSON data",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [
+        {
+          "type": "npm",
+          "namespace": null,
+          "name": "is-odd",
+          "version": "3.0.1",
+          "qualifiers": {},
+          "subpath": null,
+          "primary_language": "JavaScript",
+          "description": "Returns true if the given number is odd, and is an integer that does not exceed the JavaScript MAXIMUM_SAFE_INTEGER.",
+          "release_date": null,
+          "parties": [
+            {
+              "type": "person",
+              "role": "author",
+              "name": "Jon Schlinkert",
+              "email": null,
+              "url": "https://github.com/jonschlinkert"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Dmitry Semigradsky",
+              "email": null,
+              "url": "http://brainstorage.me/semigradsky"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "DYM",
+              "email": null,
+              "url": "https://dym.sh"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Jon Schlinkert",
+              "email": null,
+              "url": "http://twitter.com/jonschlinkert"
+            },
+            {
+              "type": "person",
+              "role": "contributor",
+              "name": "Rouven We\u00dfling",
+              "email": null,
+              "url": "www.rouvenwessling.de"
+            }
+          ],
+          "keywords": [
+            "array",
+            "count",
+            "even",
+            "filter",
+            "integer",
+            "is",
+            "math",
+            "numeric",
+            "odd",
+            "string"
+          ],
+          "homepage_url": "https://github.com/jonschlinkert/is-odd",
+          "download_url": "https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz",
+          "size": null,
+          "sha1": null,
+          "md5": null,
+          "sha256": null,
+          "sha512": null,
+          "bug_tracking_url": "https://github.com/jonschlinkert/is-odd/issues",
+          "code_view_url": null,
+          "vcs_url": "https://github.com/jonschlinkert/is-odd",
+          "copyright": null,
+          "holder": null,
+          "declared_license_expression": "mit",
+          "declared_license_expression_spdx": "MIT",
+          "license_detections": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "matches": [
+                {
+                  "license_expression": "mit",
+                  "license_expression_spdx": "MIT",
+                  "from_file": "sample50/C6_vendored/node_modules/is-odd/package.json",
+                  "start_line": 1,
+                  "end_line": 1,
+                  "matcher": "1-spdx-id",
+                  "score": 100.0,
+                  "matched_length": 1,
+                  "match_coverage": 100.0,
+                  "rule_relevance": 100,
+                  "rule_identifier": "spdx-license-identifier-mit-5da48780aba670b0860c46d899ed42a0f243ff06",
+                  "rule_url": null,
+                  "matched_text": "MIT"
+                }
+              ],
+              "identifier": "mit-a822f434-d61f-f2b1-c792-8b8cb9e7b9bf"
+            }
+          ],
+          "other_license_expression": null,
+          "other_license_expression_spdx": null,
+          "other_license_detections": [],
+          "extracted_license_statement": "- MIT\n",
+          "notice_text": null,
+          "source_packages": [],
+          "file_references": [],
+          "is_private": false,
+          "is_virtual": false,
+          "extra_data": {
+            "engines": {
+              "node": ">=4"
+            }
+          },
+          "dependencies": [
+            {
+              "purl": "pkg:npm/is-number",
+              "extracted_requirement": "^6.0.0",
+              "scope": "dependencies",
+              "is_runtime": true,
+              "is_optional": false,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            },
+            {
+              "purl": "pkg:npm/gulp-format-md",
+              "extracted_requirement": "^1.0.0",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            },
+            {
+              "purl": "pkg:npm/mocha",
+              "extracted_requirement": "^3.5.3",
+              "scope": "devDependencies",
+              "is_runtime": false,
+              "is_optional": true,
+              "is_pinned": false,
+              "is_direct": true,
+              "resolved_package": {},
+              "extra_data": {}
+            }
+          ],
+          "repository_homepage_url": "https://www.npmjs.com/package/is-odd",
+          "repository_download_url": "https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz",
+          "api_data_url": "https://registry.npmjs.org/is-odd/3.0.1",
+          "datasource_id": "npm_package_json",
+          "purl": "pkg:npm/is-odd@3.0.1"
+        }
+      ],
+      "for_packages": [
+        "pkg:npm/is-odd@3.0.1?uuid=3af935ec-d795-47be-9378-b2b3d2e0b90e"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-odd/package.json",
+              "start_line": 17,
+              "end_line": 17,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 2,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_30.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_30.RULE"
+            }
+          ],
+          "identifier": "mit-3fce6ea2-8abd-6c6b-3ede-a37af7c6efee"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 1.41,
+      "copyrights": [],
+      "holders": [],
+      "authors": [
+        {
+          "author": "Jon Schlinkert (https://github.com/jonschlinkert) contributors' Dmitry Semigradsky (http://brainstorage.me/semigradsky) DYM (https://dym.sh) Jon Schlinkert (http://twitter.com/jonschlinkert) Rouven Wessling (www.rouvenwessling.de)",
+          "start_line": 6,
+          "end_line": 11
+        }
+      ],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    },
+    {
+      "path": "sample50/C6_vendored/node_modules/is-odd/README.md",
+      "type": "file",
+      "name": "README.md",
+      "base_name": "README",
+      "extension": ".md",
+      "size": 3495,
+      "date": "2026-10-20",
+      "sha1": "06a86f61a12c7c07a33fc8cf196c4227b61b3198",
+      "md5": "cd7bf12031e2780c33617e070c943f0c",
+      "sha256": "4149335b72600d6a976f1109f287116bc9d1525bc712adbdd48df2dd432b68a7",
+      "sha1_git": "b08207cbb4af1d17983fafeb50e369e8b9f7fcd2",
+      "mime_type": "text/plain",
+      "file_type": "UTF-8 Unicode text, with very long lines",
+      "programming_language": null,
+      "is_binary": false,
+      "is_text": true,
+      "is_archive": false,
+      "is_media": false,
+      "is_source": false,
+      "is_script": false,
+      "package_data": [],
+      "for_packages": [
+        "pkg:npm/is-odd@3.0.1?uuid=3af935ec-d795-47be-9378-b2b3d2e0b90e"
+      ],
+      "detected_license_expression": "mit",
+      "detected_license_expression_spdx": "MIT",
+      "license_detections": [
+        {
+          "license_expression": "mit",
+          "license_expression_spdx": "MIT",
+          "matches": [
+            {
+              "license_expression": "mit",
+              "license_expression_spdx": "MIT",
+              "from_file": "sample50/C6_vendored/node_modules/is-odd/README.md",
+              "start_line": 90,
+              "end_line": 90,
+              "matcher": "2-aho",
+              "score": 100.0,
+              "matched_length": 5,
+              "match_coverage": 100.0,
+              "rule_relevance": 100,
+              "rule_identifier": "mit_16.RULE",
+              "rule_url": "https://github.com/nexB/scancode-toolkit/tree/develop/src/licensedcode/data/rules/mit_16.RULE"
+            }
+          ],
+          "identifier": "mit-2ec3be1d-cba0-a45c-cc38-262489fb9a64"
+        }
+      ],
+      "license_clues": [],
+      "percentage_of_license_text": 1.0,
+      "copyrights": [
+        {
+          "copyright": "Copyright (c) 2018, Jon Schlinkert (https://github.com/jonschlinkert)",
+          "start_line": 89,
+          "end_line": 89
+        }
+      ],
+      "holders": [
+        {
+          "holder": "Jon Schlinkert",
+          "start_line": 89,
+          "end_line": 89
+        }
+      ],
+      "authors": [],
+      "files_count": 0,
+      "dirs_count": 0,
+      "size_count": 0,
+      "scan_errors": []
+    }
+  ]
+}
