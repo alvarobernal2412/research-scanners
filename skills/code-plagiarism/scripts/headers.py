@@ -24,11 +24,13 @@ except ImportError:  # Python 3.10
     tomllib = None  # type: ignore[assignment]
 
 HEADER_SCAN_LINES = 60
+MAX_HEADER_LINE_CHARS = 1000
+MAX_SPDX_ID_CHARS = 160
 _SIGNATURES_PATH = Path(__file__).resolve().parent.parent / "data" / "license_signatures.json"
 
 _COMMENT_PREFIX = re.compile(r"^\s*(?:/\*+|//+|#+|<!--|--|;+|%+|\*+)?\s*")
 _COMMENT_SUFFIX = re.compile(r"\s*(?:\*+/|-->)\s*$")
-_SPDX_TAG = re.compile(r"SPDX-License-Identifier:\s*(.+?)\s*(?:\*+/|-->|$)")
+_SPDX_TAG = re.compile(r"SPDX-License-Identifier:[ \t]*(\S.*?)[ \t]*(?:\*+/|-->|$)")
 _COPYRIGHT = re.compile(r"copyright\b|©|\(c\)\s*\d{4}", re.IGNORECASE)
 _URL = re.compile(r"https?://[^\s)\]>\"'<]+")
 _SPDX_SPLIT = re.compile(r"\s+(?:OR|AND)\s+", re.IGNORECASE)
@@ -123,13 +125,13 @@ def _split_spdx(expr: str) -> list[str]:
 
 
 def detect_header(lines: list[str]) -> list[LicenseEvidence]:
-    head = lines[:HEADER_SCAN_LINES]
+    head = [ln[:MAX_HEADER_LINE_CHARS] for ln in lines[:HEADER_SCAN_LINES]]
     out: list[LicenseEvidence] = []
     for i, ln in enumerate(head, 1):
         m = _SPDX_TAG.search(ln)
         if m:
             for part in _split_spdx(m.group(1)):
-                sid, known = canonical_spdx(part)
+                sid, known = canonical_spdx(part[:MAX_SPDX_ID_CHARS])
                 out.append(LicenseEvidence(sid, "spdx_tag", i, ln.strip(), "file_header",
                                            "high" if known else "medium"))
     for sid, line, snippet in _match_signatures(head):
@@ -229,13 +231,21 @@ def project_licenses(inv: Inventory) -> list[LicenseEvidence]:
 
 def effective_file_license(file_ev: list[LicenseEvidence],
                            project: list[LicenseEvidence]) -> LicenseEvidence | None:
-    """A per-file header or SPDX tag always beats a repo-level licence."""
-    for kind in ("spdx_tag", "license_text"):
-        for ev in file_ev:
-            if ev.spdx and ev.kind == kind:
-                return ev
+    """High-confidence per-file evidence beats a repo-level licence.
+
+    Medium evidence (bare mentions, unknown ids) never displaces a project
+    licence; it is used only when the project has none.
+    """
+    ranked = [ev for kind in ("spdx_tag", "license_text")
+              for ev in file_ev if ev.spdx and ev.kind == kind]
+    for ev in ranked:
+        if ev.confidence == "high":
+            return ev
     for ev in project:
         if ev.spdx:
+            return ev
+    for ev in ranked:
+        if ev.confidence == "medium":
             return ev
     return None
 
