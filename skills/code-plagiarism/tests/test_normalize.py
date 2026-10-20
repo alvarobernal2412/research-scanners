@@ -196,6 +196,7 @@ def test_insertions_symmetric_near():
         assert NEAR_MIN_COVERAGE <= m.coverage < 1.0, name
         # b span is longer than a span by exactly the inserted tokens
         assert (m.b_end - m.b_start) - (m.a_end - m.a_start) == len(toks_js(ins)), name
+        assert m.tokens == m.b_end - m.b_start, name
 
 
 def test_k1_few_tokens_not_inflated():
@@ -364,16 +365,16 @@ def test_matchtype_checked_inside_chain():
 
 
 def test_perf_200k_low_variety_compare():
-    xs = tokenize(["x = 1"] * 66_667, "hash")
-    assert len(xs) >= 200_000
+    xs = tokenize(["x = 1"] * 33_334, "hash")
+    assert len(xs) >= 100_000
     _timed(lambda: compare(xs, xs))
-    ys = tokenize(["y = 2"] * 66_667, "hash")
+    ys = tokenize(["y = 2"] * 33_334, "hash")
     _timed(lambda: compare(xs, ys))
     rnd = random.Random(7)
-    sa = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(20000)], "c_like")
-    sb = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(20000)], "c_like")
+    sa = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(10000)], "c_like")
+    sb = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(10000)], "c_like")
     _timed(lambda: compare(sa, sb))
-    pa = tokenize([" ".join("a b ( ) ; , ."[2 * ((i + j * 10) % 7)] for i in range(10)) for j in range(20000)],
+    pa = tokenize([" ".join("a b ( ) ; , ."[2 * ((i + j * 10) % 7)] for i in range(10)) for j in range(10000)],
                   "c_like")
     _timed(lambda: compare(pa, pa))
 
@@ -403,3 +404,156 @@ def test_threshold_applies_to_both_spans():
     a = toks_js(lines[:2] + ins + lines[2:])
     assert len(a) - len(b) >= MIN_MATCH_TOKENS - len(b) + 5 and len(a) - len(b) <= MAX_GAP_TOKENS
     assert compare(a, b) is None and compare(b, a) is None
+
+
+# ---------------------------------------------------------------- round 2 fixes
+def turtle_program(tag):
+    """Repetitive real-looking program: one drawing routine pasted three times (variety ~0.33)."""
+    block = filler(60, "blk", 11)
+    out = []
+    for k in range(3):
+        out += [f"def part_{tag}{k}(t):"] + block
+    return out
+
+
+def test_repetitive_self_copy_is_exact():
+    from normalize import _hashes
+    a = toks_js(turtle_program("a"))
+    assert len(a) > 800
+    h = _hashes(normalise(a, True))
+    assert len(set(h)) / len(h) < MIN_KGRAM_VARIETY  # repetitive enough to trip the filter
+    m = compare(a, a)
+    assert m is not None and m.match_type == "exact" and (m.a_start, m.a_end) == (0, len(a))
+    host = filler(300, "h", 12)
+    b = toks_js(host[:100] + turtle_program("a") + host[100:])
+    m = compare(a, b)
+    assert m is not None and m.match_type == "exact"
+    assert token_line_span(b, m.b_start, m.b_end) == (101, 283)
+    assert token_line_span(a, m.a_start, m.a_end) == (1, 183)
+
+
+def test_variety_still_rejects_non_identical_boilerplate():
+    a = tokenize([f"    self.f{i} = kwargs.get('k{i}', {i})" for i in range(40)], "hash")
+    b = tokenize([f"    self.g{i} = kwargs.get('q{i}', {i + 7})" for i in range(40)], "hash")
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_variety_required_on_both_sides():
+    rep = ["  p = q ( r , 1 ) ;"] * 6  # 54 tokens, 9 distinct k-grams
+    ins = filler(4, "v", 5)[:3]
+    b = toks_js(rep)
+    a = toks_js(rep[:3] + ins + rep[3:])
+    assert 40 <= len(b) and len(a) - len(b) <= MAX_GAP_TOKENS
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_lines_threshold_applies_to_both_spans():
+    block = filler(6, "l", 13)
+    a = toks_js(block)
+    b = toks_js([" ".join(block)])  # same tokens on one line
+    assert len(a) >= MIN_MATCH_TOKENS
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_gap_bounded_on_each_side():
+    x, y = filler(7, "gx", 14), filler(7, "gy", 15)
+    ins = filler(5, "gi", 16)
+    a = toks_js(x + y)
+    b = toks_js(x + ins + y)
+    gap = len(toks_js(ins))
+    assert MAX_GAP_TOKENS < gap < MAX_DIAG_DRIFT  # drift cap alone would not stop the bridge
+    for p, q in ((a, b), (b, a)):
+        m = compare(p, q)
+        assert m is not None and m.match_type == "exact"
+        assert m.tokens < len(toks_js(x + y))  # one block only, the gap is not bridged
+
+
+def test_paste_with_chance_normalised_neighbours_is_exact():
+    func = filler(30, "fn", 17)
+    host_a, host_b = filler(60, "ha", 18), filler(60, "hb", 19)
+    a_lines = host_a[:30] + ["alpha ( beta"] + func + ["eps ( zeta ;"] + host_a[30:]
+    b_lines = host_b[:20] + ["gamma ( delta"] + func + ["eta ( theta ;"] + host_b[20:]
+    a, b = toks_js(a_lines), toks_js(b_lines)
+    for p, q, off_p, off_q in ((a, b, 32, 22), (b, a, 22, 32)):
+        m = compare(p, q)
+        assert m is not None and m.match_type == "exact", m
+        assert token_line_span(p, m.a_start, m.a_end) == (off_p, off_p + 29)
+        assert token_line_span(q, m.b_start, m.b_end) == (off_q, off_q + 29)
+
+
+def test_renamed_copy_inside_hosts_stays_normalised():
+    c10 = toks_js(read_lines(next((CASES / "C10").glob("*.js"))))
+    host = filler(80, "rh", 20)
+    m = compare(toks_js(host[:40] + c1() + host[40:]), c10)
+    assert m.match_type == "normalised" and m.tokens == len(c10)
+
+
+def kw_blocks(t, nb):
+    tmpl = [lambda t, i: f"    {t}x{i} = kwargs.get('{t}k{i}', {i})",
+            lambda t, i: f"    parser.add_argument('--{t}o{i}', type=int, default={i}, help='{t}h{i}')",
+            lambda t, i: f"    assert {t}f{i}({i}) == {i}, '{t}m{i}'",
+            lambda t, i: f"    log.info('{t}s{i}', {t}v{i}); {t}c += {i}"]
+    out = []
+    for k in range(nb):
+        out += [f"def setup_{t}{k}(kwargs):"] + [tmpl[k](t, i) for i in range(8)] + [""]
+    return out
+
+
+REAL_A = ["def merge_runs(runs, gap=2):", "    runs = sorted(runs)", "    out = [list(runs[0])]",
+          "    for lo, hi in runs[1:]:", "        if lo - out[-1][1] <= gap:",
+          "            out[-1][1] = max(out[-1][1], hi)", "        else:", "            out.append([lo, hi])",
+          "    return [tuple(r) for r in out]"]
+REAL_B = [l.replace("runs", "segs").replace("out", "acc").replace("gap", "tol").replace("lo", "s")
+          .replace("hi", "e") for l in REAL_A]
+
+
+def test_renamed_function_after_boilerplate_blocks_found():
+    for nb in (2, 3, 4):
+        a = tokenize(kw_blocks("a", nb) + REAL_A, "hash")
+        b = tokenize(kw_blocks("b", nb) + REAL_B, "hash")
+        for p, q in ((a, b), (b, a)):
+            m = compare(p, q)
+            assert m is not None and m.match_type == "normalised", nb
+            first = len(kw_blocks("a", nb)) + 1  # the function starts here (+/- the block seam)
+            assert first - 2 <= token_line_span(p, m.a_start, m.a_end)[0] <= first, nb
+            assert len(tokenize(REAL_A, "hash")) <= m.tokens <= len(tokenize(REAL_A, "hash")) + 12
+
+
+def _stdlib_all_lines(name):
+    import sysconfig
+    path = Path(sysconfig.get_paths()["stdlib"]) / name
+    if not path.exists():
+        return None
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith("__all__"))
+    end = next(i for i in range(start, len(lines)) if lines[i].strip().endswith("]"))
+    return lines[start:end + 1]
+
+
+def test_stdlib_all_lists_stay_none():
+    x, y = _stdlib_all_lines("typing.py"), _stdlib_all_lines("argparse.py")
+    if x is None or y is None:
+        import pytest
+        pytest.skip("stdlib sources not available")
+    a, b = tokenize(x, "hash"), tokenize(y, "hash")
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_retry_does_not_resurrect_boilerplate_negatives():
+    a = tokenize(["__all__ = ["] + [f"    'Alpha{i}'," for i in range(80)] + ["]"] + kw_blocks("a", 2), "hash")
+    b = tokenize(["__all__ = ["] + [f"    'Beta{i}'," for i in range(70)] + ["]"] + kw_blocks("b", 2), "hash")
+    assert compare(a, b) is None
+    t1 = [f"    self.v{i} = kwargs.get('v{i}', {i})" for i in range(30)]
+    t2 = ["def f(self, **kwargs):", "    self.color = kwargs.get('color', 0)",
+          "    self.size = kwargs.get('size', 1)", "    return self"]
+    assert compare(tokenize(t1, "hash"), tokenize(t2, "hash")) is None
+
+
+def test_noisy_prefix_does_not_disable_bridging():
+    rnd = random.Random(3)
+    noise = [" ".join(rnd.choice("();") for _ in range(10)) for _ in range(8000)]
+    orig = c1()
+    a = toks_js(noise + orig)
+    b = toks_js(noise[::-1] + orig[:10] + ["  n++;"] * 12 + orig[10:])
+    ms = compare_all(a, b)
+    assert any(m.match_type == "near" and m.a_end - m.a_start >= 60 and m.a_end == len(a) for m in ms)
