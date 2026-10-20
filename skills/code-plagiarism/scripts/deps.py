@@ -66,7 +66,9 @@ MAX_LIST = 50
 MAX_TEXT = 300
 MAX_LINE = 2000
 
-CONFIG_NAMES = frozenset({".npmrc", ".yarnrc.yml", ".yarnrc", "pip.conf", "pip.ini", "uv.toml", "poetry.toml"})
+CONFIG_NAMES = frozenset({".npmrc", ".yarnrc.yml", ".yarnrc", "pip.conf", "pip.ini", "uv.toml", "poetry.toml",
+                          "pyproject.toml", "setup.cfg", "Pipfile"})
+PNPM_FILES = ("pnpm-workspace.yaml", ".pnpmfile.cjs")
 PUBLIC_NPM_HOSTS = frozenset({"registry.npmjs.org", "registry.yarnpkg.com"})
 GIT_HOSTS = frozenset({"codeload.github.com", "github.com", "gitlab.com", "bitbucket.org",
                        "raw.githubusercontent.com", "api.github.com"})
@@ -96,7 +98,8 @@ _MANIFEST_NAMES = frozenset({
     "pom.xml", "build.gradle", "build.gradle.kts", "gemfile", "gemfile.lock", "composer.json", "yarn.lock",
     "pnpm-lock.yaml", "pipfile", "pipfile.lock", "poetry.lock", "pubspec.yaml", "uv.lock", "setup.py",
     "setup.cfg", "environment.yml", "environment.yaml"})
-_EXTRA_UNSUPPORTED = frozenset({"setup.py", "setup.cfg", "environment.yml", "environment.yaml", "uv.lock"})
+_EXTRA_UNSUPPORTED = frozenset({"setup.py", "setup.cfg", "environment.yml", "environment.yaml", "uv.lock",
+                                "pnpm-workspace.yaml", ".pnpmfile.cjs"})
 _NOT_PIP_TOOLS = frozenset({"h", "c", "cc", "cpp", "am", "ac", "py", "sh", "pc", "cmake", "xml", "txt", "cfg",
                             "json", "js", "html", "in"})
 _BLOCKED_SKIPS = frozenset({"sensitive", "vendored", "gitignored", "unreadable"})
@@ -396,6 +399,8 @@ class _Ctx:
             return self._npm_conf[dir_rel]
         default, scopes, possible = False, set(), False
         for d in self._dirs(dir_rel):
+            if any((posixpath.join(d, f) if d else f) in self.known for f in PNPM_FILES):
+                possible = True                          # pnpm files can set registries; they are not parsed
             for fname, parser in ((".npmrc", _parse_npmrc), (".yarnrc.yml", _parse_yarnrc),
                                   (".yarnrc", _parse_yarnrc_classic)):
                 status, text = self.probe(d, fname)
@@ -418,7 +423,13 @@ class _Ctx:
                     state["extra"] = True
                 elif status == "ok":
                     _parse_pip_conf(text.splitlines(), state)
-            for fname, parser in (("uv.toml", _parse_uv_toml), ("poetry.toml", _parse_poetry_toml)):
+            status, text = self.probe(d, "setup.cfg")
+            if status == "bad":
+                state["extra"] = True
+            elif status == "ok":
+                _parse_setup_cfg(text.splitlines(), state)
+            for fname, parser in (("uv.toml", _parse_uv_toml), ("poetry.toml", _parse_poetry_toml),
+                                  ("pyproject.toml", _parse_pyproject_registries), ("Pipfile", _parse_pipfile)):
                 status, data = self.probe_toml(d, fname)
                 if status == "bad":
                     state["extra"] = True
@@ -554,6 +565,42 @@ def _parse_uv_toml(data, state):
     for entry in data.get("index", []) if isinstance(data.get("index"), list) else []:
         if isinstance(entry, dict) and isinstance(entry.get("url"), str) and not _public(entry["url"], PUBLIC_PY_HOSTS):
             state["extra"] = True
+
+
+def _parse_setup_cfg(lines, state):
+    """Only index URL keys are looked at (never credentials as such)."""
+    for line in lines:
+        m = re.match(r"\s*(?:index[-_]url|find[-_]links)\s*[=:]\s*(\S+)", line, re.I)
+        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
+            state["extra"] = True
+
+
+def _parse_pipfile(data, state):
+    sources = data.get("source")
+    for entry in sources if isinstance(sources, list) else []:
+        if isinstance(entry, dict) and isinstance(entry.get("url"), str) and \
+                not _public(entry["url"], PUBLIC_PY_HOSTS):
+            state["extra"] = True
+
+
+def _parse_pyproject_registries(data, state):
+    """Registry settings of a pyproject.toml; they apply to every requirements file and pyproject in scope."""
+    tool = data.get("tool") if isinstance(data.get("tool"), dict) else {}
+    uv = tool.get("uv") if isinstance(tool.get("uv"), dict) else {}
+    pip = uv.get("pip") if isinstance(uv.get("pip"), dict) else {}
+    for table in (uv, pip):
+        if any(not _public(u, PUBLIC_PY_HOSTS) for u in _as_list(table.get("index-url"))):
+            state["index_private"] = True
+        if any(not _public(u, PUBLIC_PY_HOSTS) for u in _as_list(table.get("extra-index-url"))):
+            state["extra"] = True
+        if table.get("find-links"):
+            state["extra"] = True
+    for owner in (tool.get("poetry"), tool.get("pdm"), uv):
+        block = owner.get("index" if owner is uv else "source") if isinstance(owner, dict) else None
+        for entry in [block] if isinstance(block, dict) else block if isinstance(block, list) else []:
+            if isinstance(entry, dict) and isinstance(entry.get("url"), str) and \
+                    not _public(entry["url"], PUBLIC_PY_HOSTS):
+                state["extra"] = True
 
 
 def _parse_poetry_toml(data, state):
@@ -845,7 +892,8 @@ def _read_requirements_tree(ctx, root_rel: str) -> set:
                     continue
                 m = _INDEX_URL.match(line)
                 if m:
-                    state["index_private"] = not _public(m.group(1), PUBLIC_PY_HOSTS)
+                    if not _public(m.group(1), PUBLIC_PY_HOSTS):
+                        state["index_private"] = True       # sticky: a later public URL never resets it
                     continue
                 m = _EXTRA_INDEX.match(line)
                 if m:
@@ -955,10 +1003,10 @@ def _read_pyproject(ctx, rel):
     if not isinstance(data, dict):
         col.add("unknown", f"(unreadable {rel})", None, rel, "unsupported_manifest", force=True)
         return
-    private, index_public = _pyproject_sources(data)
-    conf = ctx.pip_conf(posixpath.dirname(rel))
+    _private, index_public = _pyproject_sources(data)
+    conf = ctx.pip_conf(posixpath.dirname(rel))          # includes this file and all ancestors' settings
     verdict = ("private_registry" if conf["index_private"] else
-               "private_registry_possible" if (private or conf["extra"]) else None)
+               "private_registry_possible" if conf["extra"] else None)
     tool = data.get("tool") if isinstance(data.get("tool"), dict) else {}
     uv = tool.get("uv") if isinstance(tool.get("uv"), dict) else {}
     uv_sources = uv.get("sources") if isinstance(uv.get("sources"), dict) else {}
@@ -1266,8 +1314,9 @@ _REASON_NOTES = {
     "private_registry": "dependencies resolved from a private registry or index were not sent; mirrors and "
                         "proxies of public registries cannot be told apart from private ones and are excluded too "
                         "(fails closed)",
-    "private_registry_possible": "the project configures an extra package index, so the source of each package "
-                                 "cannot be told; none of those dependencies was sent",
+    "private_registry_possible": "the project configures an extra package index (or has pnpm workspace files, "
+                                 "which can set registries), so the source of each package cannot be told; none "
+                                 "of those dependencies was sent",
     "local_version": "PEP 440 local version labels (+...) were not sent",
     "unpinned": "dependencies without an exact version were not looked up",
     "local_or_git": "local, git and URL dependencies were not looked up",
