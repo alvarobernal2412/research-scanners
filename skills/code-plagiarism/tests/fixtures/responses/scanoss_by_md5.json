@@ -1,0 +1,503 @@
+{
+  "2b7af4b52063d49222e924fad8f00e1c": [
+    {
+      "component": "58437909",
+      "file": "17",
+      "file_hash": "45ca716a85908e4577fe8f0afda15ef1",
+      "file_url": " ",
+      "hits": 7,
+      "id": "snippet",
+      "latest": "17",
+      "licenses": [
+        {
+          "name": "CC-BY-SA-4.0",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/CC-BY-SA-4.0.html"
+        }
+      ],
+      "lines": "3-15",
+      "matched": "80%",
+      "oss_lines": "3-15",
+      "purl": [
+        "pkg:stackoverflow/58437909"
+      ],
+      "release_date": "2022-04-21",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "2b7af4b52063d49222e924fad8f00e1c",
+      "status": "pending",
+      "url": "https://stackoverflow.com/revisions/58437909/17",
+      "url_hash": "45ca716a85908e4577fe8f0afda15ef1",
+      "vendor": "Scotty Jamison",
+      "version": "17"
+    }
+  ],
+  "3713eced938fb19fd75261fadcd5aa30": [
+    {
+      "component": "git",
+      "file": "strbuf.c",
+      "file_hash": "3e5e142c7a2a1654cfb2689c529266cd",
+      "file_url": " ",
+      "hits": 5,
+      "id": "snippet",
+      "latest": "v2.45.0-rc1",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/GPL-2.0-only.txt",
+          "copyleft": "yes",
+          "incompatible_with": "Apache-1.0, Apache-1.1, Apache-2.0, BSD-4-Clause, BSD-4-Clause-UC, BSD-4.3TAHOE, ECL-2.0, FTL, IJG, LicenseRef-scancode-bsla-no-advert, Minpack, OpenSSL, PHP-3.01, PSF-2.0, Python-2.0, zlib-acknowledgement, XFree86-1.1",
+          "name": "GPL-2.0-only",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "yes",
+          "source": "license_file",
+          "url": "https://spdx.org/licenses/GPL-2.0-only.html"
+        }
+      ],
+      "lines": "6-14",
+      "matched": "57%",
+      "oss_lines": "378-386",
+      "purl": [
+        "pkg:github/git/git",
+        "pkg:googlesource/external/github.com/git/git",
+        "pkg:golang/github.com/git/git",
+        "pkg:conda/git",
+        "pkg:cargo/git"
+      ],
+      "release_date": "2024-04-19",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "3713eced938fb19fd75261fadcd5aa30",
+      "status": "pending",
+      "url": "https://github.com/git/git",
+      "url_hash": "594306b42a80fb14c5c5c34390298e15",
+      "vendor": "git",
+      "version": "v2.45.0-rc0"
+    }
+  ],
+  "3c42333987ad7ac718050a9bf7c1eaf8": [
+    {
+      "component": "is-number",
+      "file": "index.js",
+      "file_hash": "3c42333987ad7ac718050a9bf7c1eaf8",
+      "file_url": " ",
+      "id": "file",
+      "latest": "6.0.0",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/MIT.txt",
+          "copyleft": "no",
+          "name": "MIT",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "no",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/MIT.html"
+        }
+      ],
+      "lines": "all",
+      "matched": "100%",
+      "oss_lines": "all",
+      "purl": [
+        "pkg:github/jonschlinkert/is-number",
+        "pkg:npm/sonus-is-number",
+        "pkg:maven/org.webjars.npm/is-number",
+        "pkg:golang/github.com/jonschlinkert/is-number"
+      ],
+      "release_date": "2018-03-31",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "3c42333987ad7ac718050a9bf7c1eaf8",
+      "status": "pending",
+      "url": "https://github.com/jonschlinkert/is-number",
+      "url_hash": "4887f502388b98fab2041311c9aac47e",
+      "vendor": "jonschlinkert",
+      "version": "6.0.0"
+    }
+  ],
+  "43322cbe1905753187754c01dff12acf": [
+    {
+      "id": "none",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      }
+    }
+  ],
+  "508f8b6d3790b8210f05b7dadc145b5e": [
+    {
+      "component": "is-odd",
+      "file": "index.js",
+      "file_hash": "508f8b6d3790b8210f05b7dadc145b5e",
+      "file_url": " ",
+      "id": "file",
+      "latest": "3.0.1",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/MIT.txt",
+          "copyleft": "no",
+          "name": "MIT",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "no",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/MIT.html"
+        }
+      ],
+      "lines": "all",
+      "matched": "100%",
+      "oss_lines": "all",
+      "purl": [
+        "pkg:github/i-voted-for-trump/is-odd",
+        "pkg:golang/github.com/i-voted-for-trump/is-odd",
+        "pkg:maven/org.webjars.npm/is-odd"
+      ],
+      "release_date": "2018-05-31",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "508f8b6d3790b8210f05b7dadc145b5e",
+      "status": "pending",
+      "url": "https://github.com/i-voted-for-trump/is-odd",
+      "url_hash": "1749560d5309add8156a9bd572124591",
+      "vendor": "i-voted-for-trump",
+      "version": "3.0.1"
+    }
+  ],
+  "53f66923a1b635bce2efe1a9c5089ade": [
+    {
+      "component": "cloudykangaroo",
+      "file": "public/javascripts/sensu-helper.js",
+      "file_hash": "9749fc53ce931eb4c2996311fb32791b",
+      "file_url": " ",
+      "hits": 6,
+      "id": "snippet",
+      "latest": "0.2.1",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/MIT.txt",
+          "copyleft": "no",
+          "name": "MIT",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "no",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/MIT.html"
+        }
+      ],
+      "lines": "5-15",
+      "matched": "66%",
+      "oss_lines": "188-198",
+      "purl": [
+        "pkg:github/cloudykangaroo/cloudykangaroo"
+      ],
+      "release_date": "2014-02-18",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "53f66923a1b635bce2efe1a9c5089ade",
+      "status": "pending",
+      "url": "https://github.com/cloudykangaroo/cloudykangaroo",
+      "url_hash": "bd46315fba6be7e2116712908898aa44",
+      "vendor": "cloudykangaroo",
+      "version": "0.2.1"
+    }
+  ],
+  "6936de048c146e830421f821e2514f73": [
+    {
+      "id": "none",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      }
+    }
+  ],
+  "69b6476c4a326882988dec56b5874204": [
+    {
+      "component": "58437909",
+      "file": "17",
+      "file_hash": "45ca716a85908e4577fe8f0afda15ef1",
+      "file_url": " ",
+      "hits": 7,
+      "id": "snippet",
+      "latest": "17",
+      "licenses": [
+        {
+          "name": "CC-BY-SA-4.0",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/CC-BY-SA-4.0.html"
+        }
+      ],
+      "lines": "3-14",
+      "matched": "78%",
+      "oss_lines": "3-14",
+      "purl": [
+        "pkg:stackoverflow/58437909"
+      ],
+      "release_date": "2022-04-21",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "69b6476c4a326882988dec56b5874204",
+      "status": "pending",
+      "url": "https://stackoverflow.com/revisions/58437909/17",
+      "url_hash": "45ca716a85908e4577fe8f0afda15ef1",
+      "vendor": "Scotty Jamison",
+      "version": "17"
+    }
+  ],
+  "7ecf0c50011477fd9c909f139d9acc16": [
+    {
+      "component": "ansible",
+      "file": "lib/ansible/utils/path.py",
+      "file_hash": "1e2d0ee4cbdc3a5005d9ee4d40d15c5c",
+      "file_url": " ",
+      "hits": 26,
+      "id": "snippet",
+      "latest": "v2.22.0rc1",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/GPL-3.0-only.txt",
+          "copyleft": "yes",
+          "incompatible_with": "Apache-1.0, Apache-1.1, BSD-4-Clause, BSD-4-Clause-UC, BSD-4.3TAHOE, FTL, IJG, LicenseRef-scancode-bsla-no-advert, Minpack, OpenSSL, PHP-3.01, PSF-2.0, Python-2.0, zlib-acknowledgement",
+          "name": "GPL-3.0-only",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "yes",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/GPL-3.0-only.html"
+        },
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/MIT-0.txt",
+          "copyleft": "no",
+          "name": "MIT-0",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "no",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/MIT-0.html"
+        }
+      ],
+      "lines": "3-33",
+      "matched": "90%",
+      "oss_lines": "31-61",
+      "purl": [
+        "pkg:github/ansible/ansible",
+        "pkg:golang/github.com/ansible/ansible",
+        "pkg:pypi/ansiboom",
+        "pkg:conda/ansible"
+      ],
+      "release_date": "2026-04-06",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "7ecf0c50011477fd9c909f139d9acc16",
+      "status": "pending",
+      "url": "https://github.com/ansible/ansible",
+      "url_hash": "afec3a7e6f9cf1a871c7e7708e93488c",
+      "vendor": "ansible",
+      "version": "v2.21.0b1"
+    }
+  ],
+  "807706d3455eb3048e040a8e3c78052a": [
+    {
+      "component": "bpp4d3e",
+      "file": "BPP4D3E_15_MyClass.py",
+      "file_hash": "b05272284b2c66dc48cc809898902834",
+      "file_url": " ",
+      "hits": 2,
+      "id": "snippet",
+      "latest": "7704a7e",
+      "licenses": [],
+      "lines": "14-20",
+      "matched": "25%",
+      "oss_lines": "19-25",
+      "purl": [
+        "pkg:github/johnpaulmueller/bpp4d3e"
+      ],
+      "release_date": "2022-05-24",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "807706d3455eb3048e040a8e3c78052a",
+      "status": "pending",
+      "url": "https://github.com/johnpaulmueller/bpp4d3e",
+      "url_hash": "a9b6521d4c5d1306c60f147fd3e29c4a",
+      "vendor": "johnpaulmueller",
+      "version": "7704a7e"
+    }
+  ],
+  "9966b0b5f9158999c0595aeaffd4c600": [
+    {
+      "component": "transformer-from-scratch",
+      "file": "lr_scheduler.py",
+      "file_hash": "0fa1b122175a907e64ba081c75d19bf7",
+      "file_url": " ",
+      "hits": 12,
+      "id": "snippet",
+      "latest": "ef4821d",
+      "licenses": [],
+      "lines": "5-35",
+      "matched": "85%",
+      "oss_lines": "8-38",
+      "purl": [
+        "pkg:github/jsbaan/transformer-from-scratch"
+      ],
+      "release_date": "2022-05-04",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "9966b0b5f9158999c0595aeaffd4c600",
+      "status": "pending",
+      "url": "https://github.com/jsbaan/transformer-from-scratch",
+      "url_hash": "f7c4a42a5952541ce5af0b19850b2a0d",
+      "vendor": "jsbaan",
+      "version": "f953d4b"
+    }
+  ],
+  "a3967891f429f98e39eb701267e7e5c8": [
+    {
+      "id": "none",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      }
+    }
+  ],
+  "ab457346dece6321f6f42bb4795eb111": [
+    {
+      "component": "53954986",
+      "file": "13",
+      "file_hash": "fd1a77be53571f3b364e0219e98302c4",
+      "file_url": " ",
+      "hits": 9,
+      "id": "snippet",
+      "latest": "13",
+      "licenses": [
+        {
+          "name": "CC-BY-SA-4.0",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/CC-BY-SA-4.0.html"
+        }
+      ],
+      "lines": "4-13",
+      "matched": "69%",
+      "oss_lines": "22-31",
+      "purl": [
+        "pkg:stackoverflow/53954986"
+      ],
+      "release_date": "2019-05-09",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "ab457346dece6321f6f42bb4795eb111",
+      "status": "pending",
+      "url": "https://stackoverflow.com/revisions/53954986/13",
+      "url_hash": "fd1a77be53571f3b364e0219e98302c4",
+      "vendor": "cs95",
+      "version": "13"
+    }
+  ],
+  "eb85ac22144f1b1eedbbf5e83f5df7d6": [
+    {
+      "component": "attrs",
+      "file": "src/attr/filters.py",
+      "file_hash": "eb85ac22144f1b1eedbbf5e83f5df7d6",
+      "file_url": " ",
+      "id": "file",
+      "latest": "30fd617",
+      "licenses": [
+        {
+          "checklist_url": "https://www.osadl.org/fileadmin/checklists/unreflicenses/MIT.txt",
+          "copyleft": "no",
+          "name": "MIT",
+          "osadl_updated": "2026-02-12T16:31:00+0000",
+          "patent_hints": "no",
+          "source": "component_declared",
+          "url": "https://spdx.org/licenses/MIT.html"
+        }
+      ],
+      "lines": "all",
+      "matched": "100%",
+      "oss_lines": "all",
+      "purl": [
+        "pkg:github/python-attrs/attrs",
+        "pkg:conda/attrs",
+        "pkg:googlesource/external/github.com/python-attrs/attrs",
+        "pkg:golang/github.com/python-attrs/attrs"
+      ],
+      "release_date": "2024-08-03",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      },
+      "source_hash": "eb85ac22144f1b1eedbbf5e83f5df7d6",
+      "status": "pending",
+      "url": "https://github.com/python-attrs/attrs",
+      "url_hash": "a93803e7927bbf314da0d1fc95cd91bb",
+      "vendor": "python-attrs",
+      "version": "24.1.0"
+    }
+  ],
+  "f5d551b79dcb00b6bbe7b94c3b76e570": [
+    {
+      "id": "none",
+      "server": {
+        "kb_version": {
+          "daily": "26.10.19",
+          "monthly": "26.09"
+        },
+        "version": "5.4.27"
+      }
+    }
+  ]
+}

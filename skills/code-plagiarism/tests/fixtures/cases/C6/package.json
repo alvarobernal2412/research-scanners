@@ -1,0 +1,1 @@
+{ "name": "c6-demo", "version": "1.0.0", "license": "MIT", "dependencies": { "is-odd": "3.0.1" } }
