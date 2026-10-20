@@ -39,6 +39,30 @@ python -I scripts/scan.py my-draft.md [--profile general|academic|technical|mark
 
 Formats: Markdown, plain text, DOCX, PDF (with a text layer). The output is JSON; Claude turns it into a report with a table of line, matched text, trope, category and source for each section. `--profile` is accepted but currently changes nothing.
 
+## Pipeline
+
+```mermaid
+flowchart TD
+    A["Input file<br/>md, txt, docx, pdf"] --> B["extract.py<br/>numbered lines; code blocks and<br/>block quotes are marked and skipped"]
+    B -->|"empty, scanned PDF or<br/>unsupported format"| E["JSON error<br/>no_text_extracted, unsupported_format, ..."]
+    B --> C["scan.py<br/>load the pattern catalog<br/>patterns.json + patterns_wikipedia.json"]
+    C -->|"catalog missing or broken"| E2["JSON error<br/>catalog_error"]
+    C --> D["Match each prose line<br/>regex patterns, curly apostrophes<br/>normalised, overlapping matches<br/>keep the highest weight"]
+    B --> S["stats.py<br/>sentence-length variance, vocabulary<br/>diversity, repetition, em-dash rate"]
+    D --> G["Group by Markdown heading<br/>no headings = one section"]
+    G --> H{"Dense section?<br/>3 or more categories AND<br/>weighted density of at least<br/>30 per 1,000 words"}
+    H --> R["JSON report<br/>findings, sections, stats,<br/>density, language note, disclaimer"]
+    S --> R
+    R --> J{"Dense sections?"}
+    J -->|yes| K["Optional judgement pass by Claude<br/>dense or sampled sections only<br/>labelled as judgement"]
+    J -->|no| M["Markdown report<br/>grouped by section, with sources,<br/>ending with the disclaimer"]
+    K --> M
+    R -.->|"optional, only if you agree"| N["check_dois.py<br/>sends only DOIs to Crossref"]
+    N -.-> M
+```
+
+The scanner itself is offline. The dotted branch is the only network use: it sends the DOIs found in the text, nothing else.
+
 ## How to read the result
 
 - **Findings** are individual matches with line numbers.
