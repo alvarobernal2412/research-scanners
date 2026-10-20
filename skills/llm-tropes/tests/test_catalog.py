@@ -72,10 +72,16 @@ def test_conclusion_and_transition_fire_at_line_start_only_where_expected():
 
 
 def test_example_matches_its_own_regex():
-    for p in load_patterns(DATA):
+    from extract import Line
+    from scan import find_hits
+
+    pats = load_patterns(DATA)
+    for p in pats:
         if p.regex is None:
             continue
-        assert re.search(p.regex, p.example, re.IGNORECASE), p.id
+        assert "\n" not in p.example, f"{p.id}: example must be a single line (scan is per line)"
+        hits = find_hits([Line(1, p.example)], pats)
+        assert p.id in {h.pattern_id for h in hits}, p.id
 
 
 def test_em_dash_pattern_contested_and_low_weight():
@@ -83,3 +89,43 @@ def test_em_dash_pattern_contested_and_low_weight():
     assert em
     for p in em:
         assert p.contested and p.weight <= 0.25 and p.category == "formatting"
+
+
+# ---- final-review regressions -------------------------------------------------
+
+def _neg_par():
+    return next(p for p in load_patterns(DATA) if p.id == "negative-parallelism")
+
+
+def test_negative_parallelism_recall():
+    rx = re.compile(_neg_par().regex, re.IGNORECASE)
+    for s in (
+        "AI isn't just a trend — it's a fundamental shift",
+        "Agents aren't just chatbots—they're coworkers",
+        "It's not bold. It's backwards.",
+        "AI isn’t just a trend — it’s a fundamental shift",
+        "It’s not bold. It’s backwards.",
+    ):
+        assert rx.search(s), s
+
+
+def test_negative_parallelism_human_negatives():
+    rx = re.compile(_neg_par().regex, re.IGNORECASE)
+    for s in (
+        "The tool isn't perfect, but it works.",
+        "We did not measure pH.",
+        "The results are not significant at the five percent level.",
+        "This is not the first time the committee has met in March.",
+    ):
+        assert not rx.search(s), s
+
+
+def test_chatbot_placeholder_ignores_citations():
+    from extract import Line
+    from scan import find_hits
+
+    pats = [p for p in load_patterns(DATA) if p.id == "chatbot-placeholder-text"]
+    for s in ("See [Yourdon 1979] for details.", "Cited as [Date, 2019].", "In [Name of journal] it appeared."):
+        assert find_hits([Line(1, s)], pats) == [], s
+    for s in ("Dear [Your Name],", "Dear [Insert Name], thanks", "At [Company Name] we", "Dated [Date] today", "Hi [Name]."):
+        assert find_hits([Line(1, s)], pats), s

@@ -74,7 +74,7 @@
  {
   "id": "negative-parallelism",
   "category": "structural",
-  "regex": "\\b(?:it'?s|this is|that'?s) not (?:just |merely |only )?[^.;]{1,60}[.;,]\\s*(?:it'?s|but|this is|that'?s)\\b",
+  "regex": "\\b(?:(?:it['’]?s|this is|that['’]?s) not (?:just |merely |only )?|(?:isn['’]?t|is not|aren['’]?t|are not) (?:just|merely|only|simply) )[^.;—–]{1,60}?(?:[.;,]|\\s*[—–])\\s*(?:it['’]?s|but|this is|that['’]?s|they['’]?re)\\b",
   "weight": 1.8,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
   "explanation": "'It's not X. It's Y.' contrast framing.",
@@ -87,7 +87,7 @@
   "weight": 0.8,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
   "explanation": "'Not only X but also Y' stacking.",
-  "example": "It is not only fast, but also reliable."
+  "example": "Not only is it fast, but also reliable."
  },
  {
   "id": "chatbot-i-hope-this-helps",
@@ -119,7 +119,7 @@
  {
   "id": "chatbot-placeholder-text",
   "category": "chatbot_residue",
-  "regex": "\\[(?:insert|your|name|date|company)[^\\]]{0,30}\\]",
+  "regex": "\\[(?:insert\\b[^\\]]{0,30}|your (?:full |first |last |company )?(?:name|company|email|address|title|position|text|content)|company name|name|date)\\]",
   "weight": 2.0,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
   "explanation": "Unfilled template placeholder.",
@@ -146,7 +146,7 @@
  {
   "id": "markdown-in-plain-text",
   "category": "formatting",
-  "regex": "(?m)^#{1,4} \\S.*\\n(?:\\s*\\n)?\\s*\\*\\*[^*]+\\*\\*:",
+  "regex": null,
   "weight": 1.0,
   "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
   "explanation": "Markdown headings plus bold labels pasted into non-Markdown venues.",
