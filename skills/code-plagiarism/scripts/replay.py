@@ -7,6 +7,7 @@ import json
 import re
 import sys
 import urllib.error
+from urllib.parse import quote, quote_plus
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -21,8 +22,18 @@ def _strip_key(url: str) -> str:
     return out.rstrip("?&") if out != url else url
 
 
-def request_key(method: str, url: str, body) -> str:
-    key = f"{method} {_strip_key(url)}"
+def redact_text(text: str, values) -> str:
+    """Replace every secret value (raw, percent-encoded, plus-encoded) by a fixed marker."""
+    for v in values or ():
+        if not isinstance(v, str) or len(v) < 4:
+            continue
+        for form in {v, quote(v, safe=""), quote_plus(v), quote(v)}:
+            text = text.replace(form, "<redacted>")
+    return text
+
+
+def request_key(method: str, url: str, body, redact=()) -> str:
+    key = f"{method} {redact_text(_strip_key(url), redact)}"
     if body:
         key += " " + hashlib.sha256(body).hexdigest()
     return key
@@ -55,14 +66,15 @@ def _split(req):
 class ReplayOpener:
     """urlopen-compatible: answers only from recorded responses."""
 
-    def __init__(self, responses_dir):
+    def __init__(self, responses_dir, redact=None):
+        self.redact = list(redact) if redact is not None else net.secret_values()
         self.dir = Path(responses_dir)
         self.index = json.loads((self.dir / "index.json").read_text(encoding="utf-8"))
         self.requests: list = []
 
     def open(self, req, timeout=None):
         method, url, body = _split(req)
-        key = request_key(method, url, body)
+        key = request_key(method, url, body, self.redact)
         self.requests.append(key)
         entry = self.index.get(key)
         if entry is None:
@@ -82,7 +94,8 @@ class ReplayOpener:
 class RecordingOpener:
     """Passes through to a real opener and records decompressed bodies."""
 
-    def __init__(self, real_opener, responses_dir):
+    def __init__(self, real_opener, responses_dir, redact=None):
+        self.redact = list(redact) if redact is not None else net.secret_values()
         self.real = real_opener
         self.dir = Path(responses_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -107,7 +120,7 @@ class RecordingOpener:
 
     def open(self, req, timeout=None):
         method, url, body = _split(req)
-        key = request_key(method, url, body)
+        key = request_key(method, url, body, self.redact)
         self.requests.append(key)
         call = getattr(self.real, "open", None) or self.real
         try:
