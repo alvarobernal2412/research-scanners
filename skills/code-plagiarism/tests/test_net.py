@@ -35,8 +35,8 @@ class Resp:
     def __init__(self, status=200, headers=None, body=b"{}"):
         self.status, self.headers, self._b = status, headers or {}, body
 
-    def read(self):
-        return self._b
+    def read(self, n=-1):
+        return self._b if n is None or n < 0 else self._b[:n]
 
     def close(self):
         pass
@@ -100,17 +100,17 @@ def test_send_post_body_exact():
 
 
 def test_send_planned_headers_and_secret_from_env(monkeypatch):
-    monkeypatch.setenv("SE_KEY_VAR", "topsecret")
-    req = dict(REQ, headers={"Accept": "application/json", "X-Key": {"secret_from_env": "SE_KEY_VAR"}})
+    monkeypatch.setenv("STACKEXCHANGE_KEY", "topsecret")
+    req = dict(REQ, headers={"Accept": "application/json", "X-Key": {"secret_from_env": "STACKEXCHANGE_KEY"}})
     op = Opener(Resp())
     net.send("GET", URL, guard([req]), opener=op)
     sent = {k.lower(): v for k, v in op.calls[0].header_items()}
     assert sent == {"user-agent": net.USER_AGENT, "accept": "application/json", "x-key": "topsecret"}
-    monkeypatch.delenv("SE_KEY_VAR")
+    monkeypatch.delenv("STACKEXCHANGE_KEY")
     with pytest.raises(net.NetError) as e:
         net.send("GET", URL, guard([req]), opener=BoomOpener())
     assert e.value.code == "secret_missing"
-    monkeypatch.setenv("SE_KEY_VAR", "bad\r\nvalue")
+    monkeypatch.setenv("STACKEXCHANGE_KEY", "bad\r\nvalue")
     with pytest.raises(net.NetError) as e:
         net.send("GET", URL, guard([req]), opener=BoomOpener())
     assert "bad" not in str(e.value)
@@ -181,7 +181,7 @@ def test_guard_sent_log():
 
 def test_followup_through_send():
     fu = {"method": "GET", "url_template": BASE + "/answers/{ids}?site=stackoverflow", "id_param": "ids",
-          "max_ids": 5}
+          "max_ids": 5, "max_requests": 5}
     g = guard(followups=[fu])
     with pytest.raises(ApprovalError):
         net.send("GET", BASE + "/answers/9?site=stackoverflow", g, opener=BoomOpener())

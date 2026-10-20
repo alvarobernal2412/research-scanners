@@ -11,6 +11,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import zlib
 from dataclasses import dataclass, field
@@ -18,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from approval import Guard  # noqa: E402
+from approval import SECRET_VARS, TOKEN_RE, Guard  # noqa: E402
 
 USER_AGENT = "code-plagiarism-skill/1.0 (+report-only; sends only approved requests)"
 MAX_RETRIES = 2
@@ -61,12 +62,44 @@ def build_default_opener():
 
 
 def _secret_value(var: str) -> str:
+    if var not in SECRET_VARS:
+        raise NetError("secret_invalid", f"{var} is not an allowed secret variable")
     value = os.environ.get(var)
     if not value:
         raise NetError("secret_missing", f"environment variable {var} is not set")
     if any(ord(c) < 32 or ord(c) == 127 for c in value):
         raise NetError("secret_invalid", f"environment variable {var} holds an unusable value")
     return value
+
+
+def _wire_url(url: str) -> str:
+    """Substitute the one {secret:NAME} token (if any); the placeholder form is what gets logged."""
+    m = TOKEN_RE.search(url)
+    if not m:
+        return url
+    return url.replace(m.group(0), urllib.parse.quote(_secret_value(m.group(1)), safe=""))
+
+
+def gunzip_bounded(data: bytes) -> bytes:
+    """gunzip with an output cap of MAX_RESPONSE_BYTES (multi-member aware)."""
+    cap = MAX_RESPONSE_BYTES
+    out, total = [], 0
+    try:
+        while data:
+            d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            chunk = d.decompress(data, cap + 1 - total)
+            total += len(chunk)
+            out.append(chunk)
+            if total > cap or d.unconsumed_tail:
+                raise NetError("response_too_large", "decompressed response exceeds the size cap")
+            if not d.eof:
+                raise NetError("network_error", "truncated gzip body")
+            data = d.unused_data
+    except zlib.error:
+        raise NetError("network_error", "invalid gzip body") from None
+    except MemoryError:
+        raise NetError("response_too_large", "decompressed response exceeds the size cap") from None
+    return b"".join(out)
 
 
 def _lower(headers) -> dict:
@@ -91,35 +124,39 @@ def _read_response(r) -> Response:
         status = r.getcode()
     headers = _lower(getattr(r, "headers", {}) or {})
     try:
-        body = r.read()
+        try:
+            body = r.read(MAX_RESPONSE_BYTES + 1)
+        except MemoryError:
+            raise NetError("response_too_large", "response exceeds the size cap") from None
     finally:
         close = getattr(r, "close", None)
         if close:
             close()
     if len(body) > MAX_RESPONSE_BYTES:
-        raise NetError("network_error", "response too large")
+        raise NetError("response_too_large", "response exceeds the size cap")
     if headers.get("content-encoding", "").lower() == "gzip":
-        try:
-            body = gzip.decompress(body)
-        except (OSError, EOFError, zlib.error):
-            raise NetError("network_error", "invalid gzip body") from None
+        body = gunzip_bounded(body)
         headers.pop("content-encoding", None)
     return Response(int(status), headers, body)
 
 
 def _once(opener, req) -> Response:
     call = getattr(opener, "open", None) or opener
+    http_error = None
     try:
-        resp = _read_response(call(req, timeout=TIMEOUT_SECONDS))
+        raw = call(req, timeout=TIMEOUT_SECONDS)
     except urllib.error.HTTPError as exc:
-        try:
-            resp = _read_response(exc)
-        except Exception:
-            resp = Response(exc.code, {}, b"")
-    except NetError:
-        raise
+        raw, http_error = exc, exc
     except (urllib.error.URLError, OSError, ValueError) as exc:
         raise NetError("network_error", type(exc).__name__) from None
+    try:
+        resp = _read_response(raw)
+    except NetError:
+        raise
+    except (OSError, ValueError, MemoryError):
+        if http_error is None:
+            raise NetError("network_error", "unreadable response") from None
+        resp = Response(http_error.code, {}, b"")
     if 300 <= resp.status < 400:
         raise NetError("redirect_blocked", f"HTTP {resp.status}; redirects are never followed")
     return resp
@@ -129,17 +166,27 @@ def send(method: str, url: str, guard: Guard, body: bytes | None = None, headers
          opener=None, sleep=time.sleep) -> Response:
     caller_headers = dict(headers) if headers else None
     guard.check(method, url, body, headers=caller_headers)          # before anything else
-    final = {"User-Agent": USER_AGENT}
-    for name, spec in guard.planned_headers(method, url, body).items():
-        final[name] = _secret_value(spec["secret_from_env"]) if isinstance(spec, dict) else spec
+    try:
+        final = {"User-Agent": USER_AGENT}
+        for name, spec in guard.planned_headers(method, url, body).items():
+            final[name] = _secret_value(spec["secret_from_env"]) if isinstance(spec, dict) else spec
+        wire_url = _wire_url(url)
+    except BaseException:
+        guard.release(method, url, body)       # nothing was sent: do not log it, allow a retry later
+        raise
     if opener is None:
         opener = build_default_opener()
-    attempt = 0
-    while True:
-        req = urllib.request.Request(url, data=body, method=method, headers=final)
-        resp = _once(opener, req)
-        if resp.status in (429, 503) and attempt < MAX_RETRIES:
-            sleep(_retry_after(resp.headers))
-            attempt += 1
-            continue
-        return resp
+    attempts = 0
+    try:
+        while True:
+            attempts += 1
+            req = urllib.request.Request(wire_url, data=body, method=method, headers=final)
+            resp = _once(opener, req)
+            if resp.status in (429, 503) and attempts <= MAX_RETRIES:
+                sleep(_retry_after(resp.headers))
+                continue
+            guard.record(method, url, body, status=resp.status, attempts=attempts)
+            return resp
+    except NetError as exc:
+        guard.record(method, url, body, status=None, attempts=attempts, error=exc.code)
+        raise

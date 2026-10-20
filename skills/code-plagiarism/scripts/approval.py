@@ -4,6 +4,14 @@ Nothing derived from the user's code may leave the machine unless it is listed i
 user approved by its sha256. This module builds and checks plans; `net.send` consults a
 `Guard` before any I/O. There is deliberately no flag, environment variable or mode that
 turns the checks off.
+
+Secrets: a plan never holds a secret value. Headers use {"secret_from_env": NAME}; a URL may
+carry one `{secret:NAME}` token as the whole value of a query parameter. NAME must be in
+SECRET_VARS. `net.send` substitutes the value at send time.
+
+local_only (data that is never sent: id->path maps, block hashes): paths are relative to the
+scan root. Entries shaped {"kind": "hash", ...} are exempt from the containment check below,
+so a hash that legitimately also appears in a WFP does not make the plan unbuildable.
 """
 from __future__ import annotations
 
@@ -22,41 +30,59 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 PLAN_VERSION = 1
 MAX_FUTURE_SKEW = timedelta(minutes=5)
 MAX_FOLLOWUP_IDS = 100
+MAX_FOLLOWUP_REQUESTS = 100_000
+MAX_ID = 2 ** 63
 TIERS = ("strict", "fingerprint", "open")
 METHODS = ("GET", "POST")
+SECRET_VARS = frozenset({"STACKEXCHANGE_KEY"})
 
 _TOP_KEYS = {"version", "created", "sha256", "backend", "tier", "root", "requests", "followups",
              "disclosure", "cost", "excluded", "local_only"}
 _REQ_REQUIRED = {"id", "method", "url", "body", "purpose", "source"}
 _REQ_KEYS = _REQ_REQUIRED | {"headers"}
-_FU_REQUIRED = {"method", "url_template", "id_param", "max_ids"}
+_FU_REQUIRED = {"method", "url_template", "id_param", "max_ids", "max_requests"}
 _FU_KEYS = _FU_REQUIRED | {"headers"}
 
-# Printable ASCII only; no '#' (urllib drops fragments) and no backslash.
-_URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:/[\x21\x22\x24-\x5b\x5d-\x7e]*)?$")
-_HEADER_NAME_RE = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
-_ENV_NAME_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+# Printable ASCII only; no '#' (urllib drops fragments) and no backslash. Used with fullmatch.
+_URL_RE = re.compile(r"https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?(?:/[\x21\x22\x24-\x5b\x5d-\x7e]*)?")
+_HEADER_NAME_RE = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+_ENV_NAME_RE = re.compile(r"[A-Z_][A-Z0-9_]*")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _SECRETISH_NAME = re.compile(r"auth|cookie|key|token|secret|passw|credential|session", re.I)
 _FORBIDDEN_HEADERS = {"user-agent", "host", "content-length", "transfer-encoding", "connection"}
-_ABS_PATH_RE = re.compile(r"^(?:[A-Za-z]:|[\\/])|(?<![A-Za-z])[A-Za-z]:[\\/]")
-_CREATED_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_REL_ABS_RE = re.compile(r"^(?:[A-Za-z]:|[\\/])|(?<![A-Za-z])[A-Za-z]:[\\/]")
+# Absolute local paths anywhere in the plan. A POSIX path only counts at the start of a string or
+# after whitespace, a quote, '=', ',', '(' or '['; so URL paths after a host are not flagged.
+_ABS_ANY_RE = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]"
+    r"|(?:^|[\s\"'=,(\[])(?:\\\\[^\s\\]+\\|/(?:home|Users|root|tmp|var|mnt|etc|opt|usr)(?:/|\b))", re.I)
+_CREATED_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 _IDS_RE = re.compile(r"[0-9]+(?:;[0-9]+)*", re.ASCII)
 _PLACEHOLDER = "{ids}"
+TOKEN_RE = re.compile(r"\{secret:([A-Z_][A-Z0-9_]*)\}")
+_PARAM_NAME_RE = re.compile(r"[A-Za-z0-9_]+")
 _MIN_LEAK_LEN = 6
+_MIN_BASENAME_LEN = 10
+_MAX_SLOW_NEEDLES = 200
+_MAX_RUN_COMPONENTS = 64
+_TOKEN_SPLIT = re.compile(r"[^\s\"'`<>(){}\[\],;:=&?|*#!]+")
 
 
 class ApprovalError(Exception):
-    """code in plan_not_found|plan_invalid|plan_hash_mismatch|request_not_in_plan|followup_not_allowed"""
+    """code in plan_not_found|plan_invalid|plan_hash_mismatch|request_not_in_plan|followup_not_allowed
+    |absolute_path_in_plan|output_exists|output_error"""
 
     def __init__(self, code: str, message: str = ""):
         super().__init__(message or code)
         self.code = code
 
 
-def _short(text: str, n: int = 100) -> str:
-    text = text.replace("\r", "\\r").replace("\n", "\\n")
-    return text if len(text) <= n else text[:n] + "..."
+def _describe(method, url) -> str:
+    """Safe text for an exception: never the query string, never control characters."""
+    if type(method) is not str or type(url) is not str:
+        return "malformed request"
+    base = url.split("?", 1)[0][:100]
+    return _CONTROL_RE.sub("?", f"{method[:10]} {base}")
 
 
 # ---- hashing / files ---------------------------------------------------------
@@ -71,10 +97,20 @@ def _canonical_text(plan: dict) -> str:
     return json.dumps(plan, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
 
-def write_plan(plan: dict, path) -> None:
+def write_plan(plan: dict, path, exclusive: bool = False) -> None:
     if plan.get("sha256") != plan_hash(plan):
         raise ApprovalError("plan_hash_mismatch", "plan sha256 does not match its content")
-    Path(path).write_bytes(_canonical_text(plan).encode("utf-8"))
+    data = _canonical_text(plan).encode("utf-8")
+    if exclusive:
+        try:
+            with open(path, "xb") as fh:
+                fh.write(data)
+        except FileExistsError:
+            raise ApprovalError("output_exists", "output file already exists") from None
+        except OSError:
+            raise ApprovalError("output_error", "cannot create the output file") from None
+    else:
+        Path(path).write_bytes(data)
 
 
 def _no_dup_keys(pairs):
@@ -131,7 +167,7 @@ def read_plan(path) -> dict:
 
 
 def _parse_created(value) -> datetime:
-    if not isinstance(value, str) or not _CREATED_RE.match(value):
+    if not isinstance(value, str) or not _CREATED_RE.fullmatch(value):
         raise ApprovalError("plan_invalid", "plan 'created' must be an ISO UTC timestamp")
     try:
         return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
@@ -146,14 +182,29 @@ def _bad(msg: str):
 
 
 def _check_url(url, what: str, template: bool = False) -> None:
-    if not isinstance(url, str):
+    if type(url) is not str:
         _bad(f"{what}: url must be a string")
     probe = url
     if template:
         if url.count(_PLACEHOLDER) != 1:
             _bad(f"{what}: url_template needs exactly one {_PLACEHOLDER}")
-        probe = url.replace(_PLACEHOLDER, "0")
-    if not _URL_RE.match(probe):
+        probe = probe.replace(_PLACEHOLDER, "0")
+    tokens = list(TOKEN_RE.finditer(probe))
+    if probe.count("{secret:") != len(tokens) or len(tokens) > 1:
+        _bad(f"{what}: at most one well-formed {{secret:NAME}} token is allowed")
+    if tokens:
+        m = tokens[0]
+        if m.group(1) not in SECRET_VARS:
+            _bad(f"{what}: secret {m.group(1)!r} is not an allowed secret")
+        i = m.start()
+        q = probe.find("?")
+        prefix = probe[:i - 1]
+        k = max(prefix.rfind("?"), prefix.rfind("&"))
+        if (q < 0 or probe[i - 1:i] != "=" or k < q or not _PARAM_NAME_RE.fullmatch(prefix[k + 1:])
+                or probe[m.end():m.end() + 1] not in ("", "&")):
+            _bad(f"{what}: the secret token must be the whole value of a query parameter")
+        probe = probe.replace(m.group(0), "0")
+    if not _URL_RE.fullmatch(probe) or _CONTROL_RE.search(probe):
         _bad(f"{what}: url must be https, printable ASCII, with no userinfo, fragment or backslash")
 
 
@@ -162,7 +213,7 @@ def _check_headers(headers, what: str) -> None:
         _bad(f"{what}: headers must be an object")
     seen = set()
     for name, spec in headers.items():
-        if not isinstance(name, str) or not _HEADER_NAME_RE.match(name):
+        if not isinstance(name, str) or not _HEADER_NAME_RE.fullmatch(name):
             _bad(f"{what}: invalid header name")
         low = name.lower()
         if low in seen or low in _FORBIDDEN_HEADERS:
@@ -170,11 +221,13 @@ def _check_headers(headers, what: str) -> None:
         seen.add(low)
         if isinstance(spec, dict):
             env = spec.get("secret_from_env")
-            if set(spec) != {"secret_from_env"} or not isinstance(env, str) or not _ENV_NAME_RE.match(env):
+            if set(spec) != {"secret_from_env"} or not isinstance(env, str) or not _ENV_NAME_RE.fullmatch(env):
                 _bad(f"{what}: bad secret_from_env marker for {name!r}")
+            if env not in SECRET_VARS:
+                _bad(f"{what}: environment variable {env!r} is not an allowed secret")
         elif isinstance(spec, str):
-            if _CONTROL_RE.search(spec):
-                _bad(f"{what}: control characters in header {name!r}")
+            if _CONTROL_RE.search(spec) or TOKEN_RE.search(spec):
+                _bad(f"{what}: control characters or a secret token in header {name!r}")
             if _SECRETISH_NAME.search(name):
                 _bad(f"{what}: header {name!r} looks secret; use secret_from_env")
         else:
@@ -194,7 +247,7 @@ def _walk_strings(obj, out: list) -> None:
 
 
 def validate_plan(plan: dict) -> None:
-    """Structural validation. Raises ApprovalError('plan_invalid') on anything unexpected."""
+    """Structural validation plus an absolute-path scan of EVERY string in the plan."""
     if not isinstance(plan, dict):
         _bad("plan must be an object")
     extra = set(plan) - _TOP_KEYS
@@ -210,7 +263,7 @@ def validate_plan(plan: dict) -> None:
         _bad("backend must be a non-empty string")
     if plan["tier"] not in TIERS:
         _bad("tier must be one of " + "|".join(TIERS))
-    if not isinstance(plan["root"], str) or _ABS_PATH_RE.search(plan["root"]):
+    if not isinstance(plan["root"], str) or _REL_ABS_RE.search(plan["root"]):
         _bad("root must be a bare directory name, not an absolute path")
     if not isinstance(plan["disclosure"], list) or not all(isinstance(s, str) for s in plan["disclosure"]):
         _bad("disclosure must be a list of strings")
@@ -230,8 +283,8 @@ def validate_plan(plan: dict) -> None:
             _bad(f"{what} must be an object")
         if not _REQ_REQUIRED <= set(r) or set(r) - _REQ_KEYS:
             _bad(f"{what} has missing or unknown fields")
-        if not isinstance(r["id"], str) or not r["id"] or r["id"] in ids:
-            _bad(f"{what}: id must be a unique non-empty string")
+        if not isinstance(r["id"], str) or not r["id"] or r["id"] in ids or "," in r["id"]:
+            _bad(f"{what}: id must be a unique non-empty string without commas")
         ids.add(r["id"])
         if r["method"] not in METHODS:
             _bad(f"{what}: method must be GET or POST")
@@ -244,12 +297,14 @@ def validate_plan(plan: dict) -> None:
                 body.encode("utf-8")
             except UnicodeEncodeError:
                 _bad(f"{what}: body is not valid unicode")
+            if "{secret:" in body and TOKEN_RE.search(body):
+                _bad(f"{what}: a secret token is not allowed in a body")
         if not isinstance(r["purpose"], str):
             _bad(f"{what}: purpose must be a string")
         src = r["source"]
         if src is not None:
             if (not isinstance(src, dict) or set(src) != {"rel", "start", "end"}
-                    or not isinstance(src["rel"], str) or _ABS_PATH_RE.search(src["rel"])
+                    or not isinstance(src["rel"], str) or _REL_ABS_RE.search(src["rel"])
                     or not all(isinstance(src[k], int) and not isinstance(src[k], bool) for k in ("start", "end"))):
                 _bad(f"{what}: source must be {{rel, start, end}} with a relative path")
         if "headers" in r:
@@ -268,40 +323,95 @@ def validate_plan(plan: dict) -> None:
         _check_url(f["url_template"], what, template=True)
         if f["id_param"] != "ids":
             _bad(f"{what}: id_param must be 'ids'")
-        m = f["max_ids"]
-        if not isinstance(m, int) or isinstance(m, bool) or not 1 <= m <= MAX_FOLLOWUP_IDS:
-            _bad(f"{what}: max_ids must be an integer 1..{MAX_FOLLOWUP_IDS}")
+        for fld, hi in (("max_ids", MAX_FOLLOWUP_IDS), ("max_requests", MAX_FOLLOWUP_REQUESTS)):
+            m = f[fld]
+            if not isinstance(m, int) or isinstance(m, bool) or not 1 <= m <= hi:
+                _bad(f"{what}: {fld} must be an integer 1..{hi}")
         if "headers" in f:
             _check_headers(f["headers"], what)
 
-    local = []
-    _walk_strings(plan["local_only"], local)
-    _walk_strings(plan["excluded"], local)
-    for s in local:
-        if _ABS_PATH_RE.search(s):
-            _bad("local_only/excluded entries must use paths relative to the scan root")
-    # local-only data must not appear inside anything that is sent
-    needles = [s for s in _values(plan["local_only"]) if len(s) >= _MIN_LEAK_LEN]
-    if needles:
-        sent_text = [r["url"] + "\n" + (r["body"] or "") for r in plan["requests"]]
-        sent_text += [f["url_template"] for f in plan["followups"]]
-        blob = "\n".join(sent_text)
-        for n in needles:
-            if n in blob:
-                _bad("a local_only value appears in an outgoing request")
+    strings: list = []
+    _walk_strings(plan, strings)
+    for s in strings:
+        if _ABS_ANY_RE.search(s):
+            raise ApprovalError("absolute_path_in_plan",
+                                "the plan contains an absolute local path; use paths relative to the scan root")
 
 
-def _values(obj) -> list:
-    out: list = []
+# ---- containment (build time only) -----------------------------------------------
+
+def _local_needles(obj, out: set) -> None:
+    """Strings from local_only that must not appear in outgoing text (hash-kind entries exempt)."""
     if isinstance(obj, str):
-        out.append(obj)
+        if len(obj) >= _MIN_LEAK_LEN:
+            out.add(obj)
+        if "/" in obj or "\\" in obj:
+            base = re.split(r"[\\/]", obj.rstrip("/\\"))[-1]
+            if len(base) >= _MIN_BASENAME_LEN:
+                out.add(base)
     elif isinstance(obj, dict):
-        for v in obj.values():
-            out += _values(v)
+        if obj.get("kind") == "hash":
+            return
+        for k, v in obj.items():
+            if isinstance(k, str) and ("/" in k or "\\" in k):
+                _local_needles(k, out)
+            _local_needles(v, out)
     elif isinstance(obj, (list, tuple)):
         for v in obj:
-            out += _values(v)
-    return out
+            _local_needles(v, out)
+
+
+def _norm(text: str) -> str:
+    return text.casefold().replace("\\", "/")
+
+
+def _check_containment(plan: dict) -> None:
+    """Best-effort safety net, not a guarantee: no local_only string (or key / basename of a path) may
+    appear in any outgoing URL or body, also after percent-decoding. Near-linear: the outgoing text is
+    tokenised and looked up in a set instead of searching once per needle."""
+    raw: set = set()
+    _local_needles(plan["local_only"], raw)
+    if not raw:
+        return
+    fast, slow = set(), []
+    for n in raw:
+        n = _norm(n)
+        if _TOKEN_SPLIT.fullmatch(n):
+            fast.add(n)
+        else:
+            slow.append(n)
+    if len(slow) > _MAX_SLOW_NEEDLES:
+        _bad("too many local_only values with unusual characters to check safely")
+    parts = []
+    for r in plan["requests"]:
+        parts.append(r["url"])
+        if r["body"]:
+            parts.append(r["body"])
+    parts.extend(f["url_template"] for f in plan["followups"])
+    blob = "\n".join(parts)
+    texts = [blob]
+    if "%" in blob:
+        from urllib.parse import unquote
+        texts.append(unquote(blob))
+    leak = "a local_only value appears in an outgoing request"
+    for text in texts:
+        text = _norm(text)
+        for tok in _TOKEN_SPLIT.findall(text):
+            if len(tok) < _MIN_LEAK_LEN:
+                continue
+            if tok in fast:
+                _bad(leak)
+            if "/" in tok:
+                comps = tok.split("/")
+                k = len(comps)
+                for i in range(k):
+                    for j in range(i + 1, min(k, i + _MAX_RUN_COMPONENTS) + 1):
+                        run = "/".join(comps[i:j])
+                        if len(run) >= _MIN_LEAK_LEN and run in fast:
+                            _bad(leak)
+        for n in slow:
+            if n in text:
+                _bad(leak)
 
 
 # ---- build / strike ------------------------------------------------------------
@@ -338,6 +448,7 @@ def build_plan(backend: str, tier: str, root: str, requests: list, followups: li
         "local_only": copy.deepcopy(local_only),
     }
     validate_plan(plan)
+    _check_containment(plan)
     plan["sha256"] = plan_hash(plan)
     return plan
 
@@ -352,8 +463,17 @@ def strike(plan: dict, request_ids: set) -> dict:
     new = copy.deepcopy(plan)
     new["requests"] = [r for r in new["requests"] if r["id"] not in wanted]
     new["created"] = _now_iso()
-    if isinstance(new["cost"].get("requests"), int):
-        new["cost"]["requests"] = len(new["requests"])
+    cost, n = new["cost"], len(new["requests"])
+    if isinstance(cost.get("requests"), int):
+        cost["requests"] = n
+    if isinstance(cost.get("quota"), str):
+        m = re.match(r"^\d+( of .*)$", cost["quota"])
+        if m:
+            cost["quota"] = f"{n}{m.group(1)}"
+        else:
+            cost["stale"] = True
+    if set(cost) - {"requests", "quota", "stale"}:
+        cost["stale"] = True
     validate_plan(new)
     new["sha256"] = plan_hash(new)
     return new
@@ -366,6 +486,10 @@ def _hosts(plan: dict) -> list:
     for u in [r["url"] for r in plan["requests"]] + [f["url_template"] for f in plan["followups"]]:
         hosts.add(u.split("/", 3)[2])
     return sorted(hosts)
+
+
+def _show_url(url: str) -> str:
+    return TOKEN_RE.sub(lambda m: f"<secret from {m.group(1)}; not shown>", url)
 
 
 def _fmt_headers(headers: dict) -> str:
@@ -386,8 +510,10 @@ def render_preview(plan: dict) -> str:
            f"Created: {plan['created']}",
            f"sha256: {plan.get('sha256', plan_hash(plan))}",
            "", f"Requests ({len(plan['requests'])}), sent exactly as written:"]
+    keyed = set()
     for r in plan["requests"]:
-        out.append(f"[{r['id']}] {r['method']} {r['url']}")
+        keyed.update(m.group(1) for m in TOKEN_RE.finditer(r["url"]))
+        out.append(f"[{r['id']}] {r['method']} {_show_url(r['url'])}")
         if r["purpose"]:
             out.append(f"    purpose: {r['purpose']}")
         if r["source"]:
@@ -403,8 +529,9 @@ def render_preview(plan: dict) -> str:
     if plan["followups"]:
         out += ["", "Follow-up requests (only with public ids returned by the service):"]
         for f in plan["followups"]:
-            line = f"  {f['method']} {f['url_template']}  (at most {f['max_ids']} ids per request)"
-            out.append(line)
+            keyed.update(m.group(1) for m in TOKEN_RE.finditer(f["url_template"]))
+            out.append(f"  {f['method']} {_show_url(f['url_template'])}  "
+                       f"(at most {f['max_ids']} ids per request, {f['max_requests']} requests)")
             if f.get("headers"):
                 out.append("    headers: " + _fmt_headers(f["headers"]))
     out += ["", "Not sent: local file paths and names, file sizes, and any source text that is not "
@@ -412,6 +539,11 @@ def render_preview(plan: dict) -> str:
     if plan["local_only"]:
         out.append(f"Kept on this machine only: {len(plan['local_only'])} local_only entries "
                    f"({', '.join(sorted(map(str, plan['local_only'])))}).")
+    out += ["", "Network: requests may pass through your configured proxy (HTTPS_PROXY / system proxy); "
+                "TLS stays end-to-end."]
+    for name in sorted(keyed):
+        out.append(f"Keyed requests: the value of environment variable {name} is added at send time "
+                   "and is never written to the plan, this preview or the logs.")
     if plan["cost"]:
         out += ["", "Cost against quota:"]
         for k in sorted(plan["cost"]):
@@ -431,7 +563,10 @@ def render_preview(plan: dict) -> str:
 # ---- guard -------------------------------------------------------------------------
 
 class Guard:
-    """Allows exactly the planned requests (and id-bearing follow-ups); logs what it allowed."""
+    """Allows exactly the planned requests (and id-bearing follow-ups), each at most once per run.
+
+    `check` authorises; `net.send` then calls `record` with the outcome (or `release` when it could
+    not send), so `sent` lists only requests that were actually attempted."""
 
     def __init__(self, plan: dict):
         validate_plan(plan)
@@ -444,75 +579,95 @@ class Guard:
         self._followups = []
         for f in plan["followups"]:
             pre, suf = f["url_template"].split(_PLACEHOLDER)
-            self._followups.append((f["method"], pre, suf, f["max_ids"], f.get("headers") or {}))
+            self._followups.append((f["method"], pre, suf, f["max_ids"], f["max_requests"],
+                                    f.get("headers") or {}))
+        self._fu_used = [0] * len(self._followups)
         self._allowed: set = set()
+        self._authorised: dict = {}     # (method, url, body) -> followup index or None
         self.sent: list = []
 
     def allow_ids(self, ids: Iterable[int]) -> None:
         batch = []
         for i in ids:
-            if not isinstance(i, int) or isinstance(i, bool) or i < 0:
-                raise ApprovalError("followup_not_allowed", "ids must be non-negative integers")
+            if type(i) is not int or not 1 <= i < MAX_ID:
+                raise ApprovalError("followup_not_allowed", "ids must be integers in 1..2**63-1")
             batch.append(i)
         self._allowed.update(batch)
 
     def _match(self, method, url, body):
-        """Return (header_spec, is_followup) or raise."""
-        if (not isinstance(method, str) or not isinstance(url, str)
-                or not (body is None or type(body) is bytes)):
+        """Return (header_spec, followup_index or None) or raise."""
+        if (type(method) is not str or type(url) is not str
+                or not (body is None or type(body) is bytes)
+                or _CONTROL_RE.search(method) or _CONTROL_RE.search(url)):
             raise ApprovalError("request_not_in_plan", "malformed request")
         spec = self._index.get((method, url, body))
         if spec is not None:
-            return spec, False
+            return spec, None
         error = None
-        for fmethod, pre, suf, max_ids, fheaders in self._followups:
+        for idx, (fmethod, pre, suf, max_ids, _max_req, fheaders) in enumerate(self._followups):
             if method != fmethod or body is not None:
                 continue
             if len(url) < len(pre) + len(suf) or not url.startswith(pre) or not url.endswith(suf):
                 continue
             mid = url[len(pre):len(url) - len(suf)]
-            if not _IDS_RE.fullmatch(mid):
-                error = error or ApprovalError("followup_not_allowed", "follow-up ids are malformed")
-                continue
             tokens = mid.split(";")
+            if not _IDS_RE.fullmatch(mid) or len(tokens) > max_ids or any(len(t) > 19 for t in tokens):
+                error = error or ApprovalError("followup_not_allowed", "follow-up ids are malformed or too many")
+                continue
             nums = [int(t) for t in tokens]
-            if [str(n) for n in nums] != tokens or nums != sorted(set(nums)):
+            if [str(n) for n in nums] != tokens or nums != sorted(set(nums)) or nums[0] < 1:
                 error = error or ApprovalError("followup_not_allowed", "ids must be canonical, ascending, unique")
-            elif len(nums) > max_ids:
-                error = error or ApprovalError("followup_not_allowed", "too many ids in one follow-up")
             elif not set(nums) <= self._allowed:
                 error = error or ApprovalError("followup_not_allowed", "id was not returned by the service")
             else:
-                return fheaders, True
+                return fheaders, idx
         if error:
             raise error
-        raise ApprovalError("request_not_in_plan", f"{method} {_short(url)} is not in the approved plan")
+        raise ApprovalError("request_not_in_plan", f"{_describe(method, url)} is not in the approved plan")
 
     def planned_headers(self, method, url, body) -> dict:
         """Header spec ({name: literal | {"secret_from_env": VAR}}) of the matching plan entry."""
         return self._match(method, url, body)[0]
 
     def check(self, method: str, url: str, body, headers=None) -> None:
-        spec, is_followup = self._match(method, url, body)
+        spec, fidx = self._match(method, url, body)
         if headers:
             if not isinstance(headers, dict):
                 raise ApprovalError("request_not_in_plan", "headers must be a mapping")
             planned = {k.lower(): v for k, v in spec.items()}
             seen = set()
             for name, value in headers.items():
-                if (not isinstance(name, str) or not isinstance(value, str)
-                        or not _HEADER_NAME_RE.match(name) or _CONTROL_RE.search(value)):
+                if (type(name) is not str or type(value) is not str
+                        or not _HEADER_NAME_RE.fullmatch(name) or _CONTROL_RE.search(value)):
                     raise ApprovalError("request_not_in_plan", "malformed header")
                 low = name.lower()
                 want = planned.get(low)
                 if low in seen or want is None or isinstance(want, dict) or want != value:
-                    raise ApprovalError("request_not_in_plan", f"header {_short(name, 40)!r} is not in the plan")
+                    raise ApprovalError("request_not_in_plan", "header is not in the plan")
                 seen.add(low)
+        key = (method, url, body)
+        if key in self._authorised:
+            raise ApprovalError("request_not_in_plan", "this request was already made in this run")
+        if fidx is not None:
+            if self._fu_used[fidx] >= self._followups[fidx][4]:
+                raise ApprovalError("followup_not_allowed", "follow-up request limit reached")
+            self._fu_used[fidx] += 1
+        self._authorised[key] = fidx
+
+    def release(self, method, url, body) -> None:
+        """Undo `check` for a request that was never sent (for example, a missing secret)."""
+        fidx = self._authorised.pop((method, url, body), None)
+        if fidx is not None:
+            self._fu_used[fidx] -= 1
+
+    def record(self, method, url, body, status=None, attempts=0, error=None) -> None:
+        """Log an attempted request: method, URL (placeholders only) and body hash, never body text."""
         self.sent.append({
             "method": method, "url": url,
             "body_sha256": None if body is None else hashlib.sha256(body).hexdigest(),
             "body_bytes": 0 if body is None else len(body),
-            "followup": is_followup,
+            "followup": self._authorised.get((method, url, body)) is not None,
+            "status": status, "attempts": attempts, "error": error,
         })
 
 
@@ -547,10 +702,13 @@ def main(argv: list) -> int:
             _emit(args.plan, plan)
         else:
             new = strike(plan, {i for i in args.ids.split(",") if i})
-            write_plan(new, Path(args.out))
+            write_plan(new, Path(args.out), exclusive=True)
             _emit(args.out, new)
     except ApprovalError as exc:
         print(json.dumps({"error": exc.code, "detail": str(exc)}))
+        return 2
+    except OSError:
+        print(json.dumps({"error": "output_error", "detail": "file system error"}))
         return 2
     return 0
 
