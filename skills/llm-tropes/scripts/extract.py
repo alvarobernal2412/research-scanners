@@ -24,8 +24,19 @@ _FENCE = re.compile(r"^\s{0,3}(```|~~~)")
 _QUOTE = re.compile(r"^\s{0,3}>")
 
 
+_NEWLINE = re.compile(r"\r\n|\n|\r")
+
+
+def _split_lines(text: str) -> list[str]:
+    # str.splitlines() also breaks on \f, \v, U+2028 etc., which drifts line numbers.
+    parts = _NEWLINE.split(text)
+    if parts and parts[-1] == "":
+        parts.pop()
+    return parts
+
+
 def _read_text(path: Path) -> list[str]:
-    return path.read_text(encoding="utf-8-sig").splitlines()
+    return _split_lines(path.read_text(encoding="utf-8-sig"))
 
 
 def _from_md(path: Path) -> list[Line]:
@@ -59,7 +70,7 @@ def _from_pdf(path: Path) -> list[Line]:
     texts: list[str] = []
     with pdfplumber.open(str(path)) as pdf:
         for page in pdf.pages:
-            texts.extend((page.extract_text() or "").splitlines())
+            texts.extend(_split_lines(page.extract_text() or ""))
     lines = [Line(i, t, False, False) for i, t in enumerate(texts, 1)]
     if not any(l.text.strip() for l in lines):
         raise ExtractError("no_text_extracted", f"no text extracted from {path.name}")

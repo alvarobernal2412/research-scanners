@@ -85,3 +85,26 @@ def test_unknown_extension_raises_unsupported_format(tmp_path):
     with pytest.raises(ExtractError) as ei:
         extract(p)
     assert ei.value.code == "unsupported_format"
+
+
+def test_i5_formfeed_does_not_shift_line_numbers(tmp_path):
+    p = tmp_path / "a.txt"
+    p.write_bytes("a\x0cb\nIt was a perfect storm.".encode("utf-8"))
+    lines = extract(p)
+    assert [l.no for l in lines] == [1, 2]
+    assert lines[1].text == "It was a perfect storm."
+
+
+def test_i5_unicode_line_separator_and_lone_cr(tmp_path):
+    p = tmp_path / "a.txt"
+    p.write_bytes("a b\nsecond".encode("utf-8"))
+    assert [(l.no, l.text) for l in extract(p)] == [(1, "a b"), (2, "second")]
+    q = tmp_path / "b.txt"
+    q.write_bytes(b"one\rtwo\rthree")
+    assert [(l.no, l.text) for l in extract(q)] == [(1, "one"), (2, "two"), (3, "three")]
+
+
+def test_i5_trailing_newline_adds_no_empty_line(tmp_path):
+    p = tmp_path / "a.txt"
+    p.write_bytes(b"x\ny\n")
+    assert [l.text for l in extract(p)] == ["x", "y"]
