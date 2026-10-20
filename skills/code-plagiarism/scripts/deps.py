@@ -23,11 +23,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import posixpath
 import re
+import stat
 import sys
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -54,10 +56,17 @@ MAX_SCOPE_REQUESTS = 25
 MAX_INCLUDE_DEPTH = 5
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
 MAX_CONFIG_BYTES = 256 * 1024
+TEXT_CACHE_MAX = 256
+MAX_INCLUDES_FOLLOWED = 500
+MAX_UNSUPPORTED_LABELS = 200
+MAX_CONTINUED = 64 * 1024
+MAX_CONTINUATIONS = 1000
+MAX_LOCK_NODES = 400_000
 MAX_LIST = 50
 MAX_TEXT = 300
 MAX_LINE = 2000
 
+CONFIG_NAMES = frozenset({".npmrc", ".yarnrc.yml", ".yarnrc", "pip.conf", "pip.ini", "uv.toml", "poetry.toml"})
 PUBLIC_NPM_HOSTS = frozenset({"registry.npmjs.org", "registry.yarnpkg.com"})
 GIT_HOSTS = frozenset({"codeload.github.com", "github.com", "gitlab.com", "bitbucket.org",
                        "raw.githubusercontent.com", "api.github.com"})
@@ -76,9 +85,11 @@ _REQ_REST_OK = re.compile(r"(?:[<>=!~]|$)")
 _REQ_OPT_CUT = re.compile(r"\s+--?[A-Za-z]")
 _INCLUDE = re.compile(r"(-r|--requirement|-c|--constraint)(?:=|\s+|(?=[^-\s]))(.+)$")
 _INCLUDE_SCAN = re.compile(r"(?m)^\s*(?:-r|--requirement)(?:=|[ \t]+|(?=[^-\s]))[ \t]*(\S+)")
-_INDEX_URL = re.compile(r"(?:-i|--index-url)(?:=|\s+)(\S+)")
-_EXTRA_INDEX = re.compile(r"--extra-index-url(?:=|\s+)(\S+)")
-_FIND_LINKS = re.compile(r"(?:-f|--find-links)(?:=|\s+)(\S+)")
+_INDEX_URL = re.compile(r"(?:--index-url|-i)(?:=|\s*)(\S+)")
+_EXTRA_INDEX = re.compile(r"--extra-index-url(?:=|\s*)(\S+)")
+_FIND_LINKS = re.compile(r"(?:--find-links|-f)(?:=|\s*)(\S+)")
+_TRUSTED_HOST = re.compile(r"-{2}trusted-host(?:=|\s*)(\S+)")
+_OVERLONG = object()
 _EDITABLE = re.compile(r"(?:-e|--editable)(?:\s|=|$)")
 _MANIFEST_NAMES = frozenset({
     "package.json", "package-lock.json", "pyproject.toml", "go.mod", "go.sum", "cargo.toml", "cargo.lock",
@@ -153,6 +164,41 @@ def _host(url) -> str | None:
         return None
 
 
+def _public(url, hosts) -> bool:
+    """True only for http(s) on exactly one of `hosts` (default port): no look-alikes, no userinfo tricks."""
+    try:
+        parts = urlsplit(str(url).strip().strip("\"'"))
+        host, port = parts.hostname, parts.port
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and host in hosts and port in (None, 80, 443)
+
+
+def _inside_root(root, path) -> bool:
+    try:
+        return Path(path).resolve().is_relative_to(Path(root).resolve())
+    except (OSError, ValueError):
+        return False
+
+
+def _is_label(name) -> bool:
+    return isinstance(name, str) and name in ("<url-spec>", "<vcs-spec>", "<path-spec>", "<invalid-name>")
+
+
+def _spec_label(name) -> str:
+    """A label for an entry that is not a package name; never holds the raw text (it may hold secrets)."""
+    s = re.sub(r"^(?:-e|--editable)[\s=]*", "", name) if isinstance(name, str) else ""
+    low = s.lower()
+    if any(m in low for m in ("git+", "hg+", "svn+", "bzr+")) or low.startswith(("git:", "git@", "ssh:", "github:",
+                                                                                  "gitlab:", "bitbucket:")):
+        return "<vcs-spec>"
+    if "://" in s or " @ " in s or low.startswith(("http:", "https:", "file:")):
+        return "<url-spec>"
+    if _pathlike(s):
+        return "<path-spec>"
+    return "<invalid-name>"
+
+
 class _Collector:
     def __init__(self):
         self.items: list[Dependency] = []
@@ -167,6 +213,11 @@ class _Collector:
         if force:
             self.forced.append(Dependency(ecosystem, _short(name), None, manifest, reason, count))
             return
+        if not _safe_name(ecosystem, name) and ecosystem != "unknown" and not _is_label(name):
+            label = _spec_label(name)
+            if reason in (None, "bad_name") and label != "<invalid-name>":
+                reason = "local_or_git"
+            name = label
         if self.full:
             self.dropped[manifest] += count
             return
@@ -190,25 +241,42 @@ class _Ctx:
     def __init__(self, inv: Inventory):
         self.inv = inv
         self.col = _Collector()
-        self._bytes: dict = {}
+        self._bytes: OrderedDict = OrderedDict()
+        self._probe: dict = {}
+        self._dirlist: dict = {}
         self._npm_conf: dict = {}
         self._pip_conf: dict = {}
+        self._lock_idx: dict = {}
+        self._pj: dict = {}
+        self.follows = 0
+        self.member_names: set = set()
+        self.known = ({s.rel for s in inv.sources} | {s.rel for s in inv.skipped} | {m.rel for m in inv.manifests})
         self._blocked = {s.rel for s in inv.skipped if s.reason in _BLOCKED_SKIPS}
 
     def load(self, rel: str, limit: int = MAX_MANIFEST_BYTES) -> bytes | None:
         path = self.inv.root / rel
         try:
-            if not path.resolve().is_relative_to(self.inv.root) or path.stat().st_size > limit:
-                return None
-            return path.read_bytes()
+            # files listed by the inventory sit in real directories; only the file itself can be a link
+            if rel not in self.known or stat.S_ISLNK(os.lstat(path).st_mode):
+                if not _inside_root(self.inv.root, path):
+                    return None
+            with open(path, "rb") as fh:
+                if os.fstat(fh.fileno()).st_size > limit:
+                    return None
+                return fh.read()
         except (OSError, ValueError):
             return None
 
     def text(self, rel: str) -> str | None:
-        if rel not in self._bytes:
-            raw = self.load(rel)
-            self._bytes[rel] = None if raw is None else _decode(raw)
-        return self._bytes[rel]
+        if rel in self._bytes:
+            self._bytes.move_to_end(rel)
+            return self._bytes[rel]
+        raw = self.load(rel)
+        text = None if raw is None else _decode(raw)
+        self._bytes[rel] = text
+        while len(self._bytes) > TEXT_CACHE_MAX:
+            self._bytes.popitem(last=False)
+        return text
 
     def json(self, rel: str):
         text = self.text(rel)
@@ -219,17 +287,33 @@ class _Ctx:
         except (ValueError, RecursionError):
             return None
 
+    def package_json(self, rel: str):
+        if rel in self._pj:
+            return self._pj[rel]
+        text = self.text(rel)
+        data = None
+        if text is not None:
+            try:
+                data = json.loads(text)
+            except (ValueError, RecursionError):
+                data = None
+        if text is None or len(text) < 262144:
+            self._pj[rel] = data
+        return data
+
     def followable(self, rel: str) -> bool:
         if rel in self._blocked or any(p in VENDOR_DIRS for p in rel.split("/")[:-1]):
             return False
+        path = self.inv.root / rel
         try:
-            return (self.inv.root / rel).is_file()
+            return path.is_file() and _inside_root(self.inv.root, path)
         except OSError:
             return False
 
-    # -- registry configuration (narrow patterns only) --
+    # -- configuration files: strict, cached per (directory, name), fail closed --
 
-    def _dirs(self, dir_rel: str):
+    @staticmethod
+    def _dirs(dir_rel: str):
         d = dir_rel
         while True:
             yield d
@@ -237,24 +321,91 @@ class _Ctx:
                 return
             d = posixpath.dirname(d)
 
+    def _bad_config(self, rel: str) -> None:
+        self.col.add("unknown", rel, None, rel, "config_unreadable", force=True)
+
+    def _listing(self, d: str) -> dict:
+        """Entries of directory `d` that are named like a configuration file: name -> "dir" | "file"."""
+        if d not in self._dirlist:
+            found = {}
+            try:
+                with os.scandir(self.inv.root / d if d else self.inv.root) as it:
+                    for e in it:
+                        if e.name in CONFIG_NAMES:
+                            found[e.name] = "dir" if e.is_dir(follow_symlinks=False) else "file"
+            except OSError:
+                pass
+            self._dirlist[d] = found
+        return self._dirlist[d]
+
+    def probe(self, d: str, fname: str):
+        """-> ("absent"|"bad"|"ok", text). Only registry lines are ever used from the text."""
+        key = (d, fname)
+        if key in self._probe:
+            return self._probe[key]
+        rel = posixpath.join(d, fname) if d else fname
+        result = ("absent", None)
+        if rel in self.known:
+            result = self._read_config(rel)
+        elif self._listing(d).get(fname) == "dir":
+            self._bad_config(rel)                      # a directory named like a config file: absent, but noted
+        self._probe[key] = result
+        return result
+
+    def _read_config(self, rel: str):
+        raw = self.load(rel, MAX_CONFIG_BYTES)
+        text = None
+        if raw is not None:
+            try:
+                if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+                    text = raw.decode("utf-16")
+                elif b"\0" in raw:
+                    text = None
+                else:
+                    text = raw.decode("utf-8-sig")
+            except UnicodeError:
+                text = None
+            if text is not None and re.search(r"[\x00-\x08\x0b\x0e-\x1f]", text):
+                text = None
+        if text is None:
+            self._bad_config(rel)
+            return ("bad", None)
+        return ("ok", text)
+
+    def probe_toml(self, d: str, fname: str):
+        key = (d, fname, "toml")
+        if key in self._probe:
+            return self._probe[key]
+        status, text = self.probe(d, fname)
+        data = None
+        if status == "ok":
+            try:
+                data = tomllib.loads(text) if tomllib is not None else None
+            except (ValueError, RecursionError):
+                data = None
+            if not isinstance(data, dict):
+                data, status = None, "bad"
+                self._bad_config(posixpath.join(d, fname) if d else fname)
+        result = (status, data)
+        self._probe[key] = result
+        return result
+
     def npm_conf(self, dir_rel: str):
-        """(default_registry_is_private, {private scopes in lower case})"""
+        """(default_registry_is_private, {private scopes in lower case}, some config was unreadable)"""
         if dir_rel in self._npm_conf:
             return self._npm_conf[dir_rel]
-        default, scopes = False, set()
+        default, scopes, possible = False, set(), False
         for d in self._dirs(dir_rel):
-            for fname in (".npmrc", ".yarnrc.yml"):
-                raw = self.load(posixpath.join(d, fname) if d else fname, MAX_CONFIG_BYTES)
-                if raw is None:
-                    continue
-                lines = _decode(raw).splitlines()[:2000]
-                if fname == ".npmrc":
-                    de, sc = _parse_npmrc(lines)
-                else:
-                    de, sc = _parse_yarnrc(lines)
-                default, scopes = default or de, scopes | sc
-        self._npm_conf[dir_rel] = (default, scopes)
-        return default, scopes
+            for fname, parser in ((".npmrc", _parse_npmrc), (".yarnrc.yml", _parse_yarnrc),
+                                  (".yarnrc", _parse_yarnrc_classic)):
+                status, text = self.probe(d, fname)
+                if status == "bad":
+                    possible = True
+                elif status == "ok":
+                    de, sc = parser(text.splitlines())
+                    default, scopes = default or de, scopes | sc
+        self._npm_conf[dir_rel] = (default, scopes, possible)
+        return self._npm_conf[dir_rel]
 
     def pip_conf(self, dir_rel: str) -> dict:
         if dir_rel in self._pip_conf:
@@ -262,18 +413,41 @@ class _Ctx:
         state = {"index_private": False, "extra": False}
         for d in self._dirs(dir_rel):
             for fname in ("pip.conf", "pip.ini"):
-                raw = self.load(posixpath.join(d, fname) if d else fname, MAX_CONFIG_BYTES)
-                if raw is None:
-                    continue
-                for line in _decode(raw).splitlines()[:2000]:
-                    m = re.match(r"\s*index[-_]url\s*[=:]\s*(\S+)", line)
-                    if m and _host(m.group(1)) not in PUBLIC_PY_HOSTS:
-                        state["index_private"] = True
-                    m = re.match(r"\s*(?:extra[-_]index[-_]url|find[-_]links)\s*[=:]\s*(\S+)", line)
-                    if m and _host(m.group(1)) not in PUBLIC_PY_HOSTS:
-                        state["extra"] = True
+                status, text = self.probe(d, fname)
+                if status == "bad":
+                    state["extra"] = True
+                elif status == "ok":
+                    _parse_pip_conf(text.splitlines(), state)
+            for fname, parser in (("uv.toml", _parse_uv_toml), ("poetry.toml", _parse_poetry_toml)):
+                status, data = self.probe_toml(d, fname)
+                if status == "bad":
+                    state["extra"] = True
+                elif status == "ok":
+                    parser(data, state)
         self._pip_conf[dir_rel] = state
         return dict(state)
+
+    def lock_index(self, rel: str):
+        if rel not in self._lock_idx:
+            data = self.json(rel)
+            self._lock_idx[rel] = _lock_index(data) if isinstance(data, dict) else None
+            if self._lock_idx[rel] is None:
+                self._bad_config(rel)
+        return self._lock_idx[rel]
+
+    def applicable_locks(self, dir_rel: str):
+        """Lockfiles of this directory and its ancestors (nearest first): (indexes, some was unreadable)."""
+        out, bad = [], False
+        for d in self._dirs(dir_rel):
+            for fname in ("package-lock.json", "npm-shrinkwrap.json"):
+                rel = posixpath.join(d, fname) if d else fname
+                if rel in self.known:
+                    idx = self.lock_index(rel)
+                    if idx is None:
+                        bad = True
+                    else:
+                        out.append(idx)
+        return out, bad
 
 
 def _decode(raw: bytes) -> str:
@@ -291,13 +465,13 @@ def _parse_npmrc(lines):
         s = line.strip()
         if not s or s[0] in "#;":
             continue
-        m = re.match(r"(@[A-Za-z0-9][A-Za-z0-9._~-]*):registry\s*=\s*(.*)$", s)
+        m = re.match(r"(@[A-Za-z0-9][A-Za-z0-9._~-]*)\s*:\s*registry\s*=\s*(.*)$", s, re.I)
         if m:
-            if _host(m.group(2)) not in PUBLIC_NPM_HOSTS:
+            if not _public(m.group(2), PUBLIC_NPM_HOSTS):
                 scopes.add(m.group(1).lower())
             continue
-        m = re.match(r"registry\s*=\s*(.*)$", s)
-        if m and _host(m.group(1)) not in PUBLIC_NPM_HOSTS:
+        m = re.match(r"registry\s*=\s*(.*)$", s, re.I)
+        if m and not _public(m.group(1), PUBLIC_NPM_HOSTS):
             default = True
     return default, scopes
 
@@ -307,11 +481,10 @@ def _parse_yarnrc(lines):
     for line in lines:
         if not line.strip() or line.lstrip().startswith("#"):
             continue
-        indented = line[0].isspace()
-        if not indented:
+        if not line[0].isspace():
             in_scopes, cur = bool(re.match(r"npmScopes\s*:", line)), None
             m = re.match(r"npmRegistryServer\s*:\s*(.*)$", line)
-            if m and _host(m.group(1)) not in PUBLIC_NPM_HOSTS:
+            if m and not _public(m.group(1), PUBLIC_NPM_HOSTS):
                 default = True
             continue
         if not in_scopes:
@@ -321,9 +494,75 @@ def _parse_yarnrc(lines):
             cur = m.group(1).lower()
             continue
         m = re.match(r"\s+npmRegistryServer\s*:\s*(.*)$", line)
-        if m and cur and _host(m.group(1)) not in PUBLIC_NPM_HOSTS:
+        if m and cur and not _public(m.group(1), PUBLIC_NPM_HOSTS):
             scopes.add("@" + cur)
     return default, scopes
+
+
+def _parse_yarnrc_classic(lines):
+    """Yarn 1 .yarnrc: `registry "url"` and `"@scope:registry" "url"`; nothing else is read."""
+    default, scopes = False, set()
+    for line in lines:
+        s = line.strip()
+        if not s or s[0] == "#":
+            continue
+        m = re.match(r"[\"']?(@[A-Za-z0-9][A-Za-z0-9._~-]*):registry[\"']?\s+(\S+)", s, re.I)
+        if m:
+            if not _public(m.group(2), PUBLIC_NPM_HOSTS):
+                scopes.add(m.group(1).lower())
+            continue
+        m = re.match(r"[\"']?registry[\"']?\s+(\S+)", s, re.I)
+        if m and not _public(m.group(1), PUBLIC_NPM_HOSTS):
+            default = True
+    return default, scopes
+
+
+def _parse_pip_conf(lines, state):
+    for line in lines:
+        m = re.match(r"\s*index[-_]url\s*[=:]\s*(\S+)", line, re.I)
+        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
+            state["index_private"] = True
+        m = re.match(r"\s*extra[-_]index[-_]url\s*[=:]\s*(\S+)", line, re.I)
+        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
+            state["extra"] = True
+        if re.match(r"\s*find[-_]links\s*[=:]", line, re.I):
+            state["extra"] = True
+        m = re.match(r"\s*trusted[-_]host\s*[=:]\s*(\S+)", line, re.I)
+        if m and _bare_host(m.group(1)) not in PUBLIC_PY_HOSTS:
+            state["extra"] = True
+
+
+def _bare_host(value: str):
+    try:
+        return urlsplit("//" + value.strip().strip("\"'")).hostname
+    except ValueError:
+        return None
+
+
+def _as_list(value):
+    return [value] if isinstance(value, str) else [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
+
+
+def _parse_uv_toml(data, state):
+    for table in (data, data.get("pip") if isinstance(data.get("pip"), dict) else {}):
+        if any(not _public(u, PUBLIC_PY_HOSTS) for u in _as_list(table.get("index-url"))):
+            state["index_private"] = True
+        if any(not _public(u, PUBLIC_PY_HOSTS) for u in _as_list(table.get("extra-index-url"))):
+            state["extra"] = True
+        if table.get("find-links"):
+            state["extra"] = True
+    for entry in data.get("index", []) if isinstance(data.get("index"), list) else []:
+        if isinstance(entry, dict) and isinstance(entry.get("url"), str) and not _public(entry["url"], PUBLIC_PY_HOSTS):
+            state["extra"] = True
+
+
+def _parse_poetry_toml(data, state):
+    repos = data.get("repositories")
+    if isinstance(repos, dict):
+        for repo in repos.values():
+            if isinstance(repo, dict) and isinstance(repo.get("url"), str) and \
+                    not _public(repo["url"], PUBLIC_PY_HOSTS):
+                state["extra"] = True
 
 
 # ---- npm ----------------------------------------------------------------------------
@@ -348,42 +587,50 @@ def _resolved_class(resolved) -> str | None:
     low = resolved.lower()
     if low.startswith(("file:", "link:", "git+", "git:", "git@", "ssh:", "github:")):
         return "git"
-    host = _host(resolved)
-    if host is None:
-        return "private"
-    if host in PUBLIC_NPM_HOSTS:
+    if _public(resolved, PUBLIC_NPM_HOSTS):
         return "public"
-    return "git" if host in GIT_HOSTS else "private"
+    return "git" if _public(resolved, GIT_HOSTS) else "private"
 
 
-def _lock_entries(lock) -> dict:
-    """name -> {version, name, local, private} for the top-level packages of a lockfile."""
-    out: dict = {}
-    if not isinstance(lock, dict):
-        return out
+def _lock_made(entry) -> dict:
+    cls = _resolved_class(entry.get("resolved"))
+    real = entry.get("name")
+    return {"version": entry.get("version"), "name": real if isinstance(real, str) else None,
+            "local": bool(entry.get("link")) or cls == "git", "private": cls == "private" and not entry.get("link")}
 
-    def make(entry):
-        cls = _resolved_class(entry.get("resolved"))
-        real = entry.get("name")
-        return {"version": entry.get("version"), "name": real if isinstance(real, str) else None,
-                "local": bool(entry.get("link")) or cls == "git", "private": cls == "private"}
 
+def _lock_index(lock) -> dict:
+    """{"top": name -> entry for node_modules/<name>, "all": name -> every entry of that name (nested,
+    hoisted, workspace-prefixed)}. Nested copies count as evidence only."""
+    top: dict = {}
+    allm: dict = {}
     pkgs = lock.get("packages")
     if isinstance(pkgs, dict):
         for key, entry in pkgs.items():
-            if not (isinstance(key, str) and key.startswith("node_modules/") and isinstance(entry, dict)):
+            if not (isinstance(key, str) and "node_modules/" in key and isinstance(entry, dict)):
                 continue
-            name = key[len("node_modules/"):]
-            if "node_modules/" in name:
-                continue                              # nested: a transitive copy
-            out[name] = make(entry)
-        return out
-    old = lock.get("dependencies")
-    if isinstance(old, dict):
-        for name, entry in old.items():
-            if isinstance(entry, dict) and isinstance(name, str):
-                out[name] = make(entry)
-    return out
+            name = key.rsplit("node_modules/", 1)[1]
+            made = _lock_made(entry)
+            allm.setdefault(name, []).append(made)
+            if key == "node_modules/" + name:
+                top[name] = made
+        return {"top": top, "all": allm}
+    stack = [(lock.get("dependencies"), 0)]
+    nodes = 0
+    while stack and nodes < MAX_LOCK_NODES:
+        deps_, depth = stack.pop()
+        if not isinstance(deps_, dict):
+            continue
+        for name, entry in deps_.items():
+            nodes += 1
+            if not (isinstance(name, str) and isinstance(entry, dict)):
+                continue
+            made = _lock_made(entry)
+            allm.setdefault(name, []).append(made)
+            if depth == 0:
+                top[name] = made
+            stack.append((entry.get("dependencies"), depth + 1))
+    return {"top": top, "all": allm}
 
 
 def _lock_version(entry):
@@ -392,19 +639,22 @@ def _lock_version(entry):
     return m.group(1) if m else None
 
 
-def _npm_private(conf, name) -> bool:
-    default, scopes = conf
-    return default or (isinstance(name, str) and name.startswith("@") and name.split("/")[0].lower() in scopes)
+def _npm_private(conf, name) -> str | None:
+    default, scopes, possible = conf
+    if default or (isinstance(name, str) and name.startswith("@") and name.split("/")[0].lower() in scopes):
+        return "private_registry"
+    return "private_registry_possible" if possible else None
 
 
-def _read_npm(ctx, rel, lock_rel):
+def _read_npm(ctx, rel):
     col = ctx.col
-    data = ctx.json(rel)
+    data = ctx.package_json(rel)
     if not isinstance(data, dict):
         col.add("unknown", f"(unreadable {rel})", None, rel, "unsupported_manifest", force=True)
         return
-    lock = _lock_entries(ctx.json(lock_rel)) if lock_rel else {}
-    conf = ctx.npm_conf(posixpath.dirname(rel))
+    here = posixpath.dirname(rel)
+    locks, lock_bad = ctx.applicable_locks(here)
+    conf = ctx.npm_conf(here)
     for section in ("dependencies", "devDependencies", "optionalDependencies"):
         if section not in data:
             continue
@@ -417,21 +667,31 @@ def _read_npm(ctx, rel, lock_rel):
             continue
         for name, spec in block.items():
             version, reason = _npm_spec(spec)
-            entry = lock.get(name) if isinstance(name, str) else None
             real = name
-            if reason != "local_or_git" and entry is not None:
-                if entry["local"]:
+            if reason != "local_or_git" and isinstance(name, str):
+                evidence = [e for idx in locks for e in idx["all"].get(name, ())]
+                tops = [idx["top"][name] for idx in locks if name in idx["top"]]
+                if name in ctx.member_names or any(e["local"] for e in evidence):
                     version, reason = None, "local_or_git"
-                elif entry["private"]:
+                elif any(e["private"] for e in evidence):
                     version, reason = None, "private_registry"
                 else:
                     if reason in ("unpinned", "alias"):
-                        lv = _lock_version(entry)
-                        version, reason = (lv, None) if lv else (None, reason)
-                    if entry["name"] and entry["name"] != name:
-                        real = entry["name"]
-            if reason is None and _npm_private(conf, real):
-                version, reason = None, "private_registry"
+                        for t in tops:
+                            lv = _lock_version(t)
+                            if lv:
+                                version, reason = lv, None
+                                break
+                    for t in tops:
+                        if t["name"] and t["name"] != name:
+                            real = t["name"]
+                            break
+            if reason is None and lock_bad:
+                version, reason = None, "private_registry_possible"
+            if reason is None:
+                found = _npm_private(conf, real)
+                if found:
+                    version, reason = None, found
             col.add("npm", real, version, rel, reason)
 
 
@@ -442,37 +702,38 @@ def _read_npm_lock_only(ctx, rel):
         col.add("unknown", f"(unreadable {rel})", None, rel, "unsupported_manifest", force=True)
         return
     conf = ctx.npm_conf(posixpath.dirname(rel))
-    entries = _lock_entries(lock)
+    idx = _lock_index(lock)
     if col.full:
-        col.dropped[rel] += len(entries)
+        col.dropped[rel] += len(idx["top"])
         return
-    for key, entry in entries.items():
+    for key, entry in idx["top"].items():
         name = entry["name"] or key
         version = _lock_version(entry)
-        if entry["local"]:
+        evidence = idx["all"].get(key, ())
+        if entry["local"] or any(e["local"] for e in evidence):
             reason = "local_or_git"
-        elif entry["private"] or _npm_private(conf, name):
+        elif entry["private"] or any(e["private"] for e in evidence):
             reason = "private_registry"
         else:
-            reason = None if version else "unpinned"
+            reason = _npm_private(conf, name) or (None if version else "unpinned")
         col.add("npm", name, version, rel, reason)
 
 
 # ---- python -------------------------------------------------------------------------
 
 def _requirement(line: str):
-    """One PEP 508 style requirement -> (name, version, reason)."""
+    """One PEP 508 style requirement -> (name, version, reason); the name of a spec is a label."""
     if len(line) > MAX_LINE:
-        return line[:200], None, "bad_name"
+        return "<invalid-name>", None, "bad_name"
     line = line.split(";", 1)[0]
     line = _REQ_OPT_CUT.split(line, maxsplit=1)[0].strip()
     if not line:
         return None
     if _pathlike(line) or re.match(r"[^\s=<>!~]+\s*@\s*\S", line):
-        return line, None, "local_or_git"
+        return _spec_label(line), None, "local_or_git"
     m = _REQ_NAME.fullmatch(line)
     if not m or not _REQ_REST_OK.match(m.group(3)):
-        return line, None, "bad_name"
+        return "<invalid-name>", None, "bad_name"
     name, rest = m.group(1), m.group(3).strip()
     pin = _REQ_PIN.fullmatch(rest) if rest.startswith("==") else None
     if pin and _safe_version(pin.group(1)):
@@ -481,10 +742,36 @@ def _requirement(line: str):
 
 
 def _req_lines(text: str):
+    """Logical lines: backslash continuations joined (before options and pins are parsed), comments
+    removed. A joined line over MAX_CONTINUED yields _OVERLONG (the caller fails closed)."""
+    buf: list = []
+    size = 0
+    over = False
     for raw in text.splitlines():
-        line = re.split(r"(?:^|\s)#", raw, maxsplit=1)[0].strip()
-        while line.endswith("\\"):
-            line = line[:-1].rstrip()
+        cont = raw.endswith("\\")
+        if not cont and not buf and not over and raw.lstrip().startswith("#"):
+            continue
+        if not over:
+            piece = raw[:-1] if cont else raw
+            buf.append(piece)
+            size += len(piece)
+            if size > MAX_CONTINUED or len(buf) > MAX_CONTINUATIONS:
+                over, buf = True, []
+        if cont:
+            continue
+        if over:
+            yield _OVERLONG
+            over, size = False, 0
+            continue
+        line = "".join(buf)
+        buf, size = [], 0
+        line = re.split(r"(?:^|\s)#", line, maxsplit=1)[0].strip()
+        if line:
+            yield line
+    if over:
+        yield _OVERLONG
+    elif buf:
+        line = re.split(r"(?:^|\s)#", "".join(buf), maxsplit=1)[0].strip()
         if line:
             yield line
 
@@ -512,10 +799,18 @@ def _read_requirements_tree(ctx, root_rel: str) -> set:
     state = ctx.pip_conf(posixpath.dirname(root_rel))
     deps_found: list = []         # (name, version, reason, manifest)
     unsupported: list = []        # labels
+    over_labels = 0
     seen: set = set()
 
     def pending() -> int:
         return len(col.items) + len(deps_found)
+
+    def unsupported_add(label):
+        nonlocal over_labels
+        if len(unsupported) >= MAX_UNSUPPORTED_LABELS:
+            over_labels += 1
+        else:
+            unsupported.append(label)
 
     def visit(rel: str, depth: int):
         if rel in seen:
@@ -523,37 +818,53 @@ def _read_requirements_tree(ctx, root_rel: str) -> set:
         seen.add(rel)
         text = ctx.text(rel)
         if text is None:
-            unsupported.append(_label(rel))
+            unsupported_add(_label(rel))
             return
         for line in _req_lines(text):
+            if line is _OVERLONG:
+                state["extra"] = True
+                deps_found.append(("<invalid-name>", None, "bad_name", rel))
+                continue
             if line[0] == "-":
                 m = _INCLUDE.match(line)
                 if m:
                     resolved = _resolve_include(rel, m.group(2))
                     is_req = m.group(1) in ("-r", "--requirement")
-                    if (is_req and resolved is not None and depth < MAX_INCLUDE_DEPTH
-                            and ctx.followable(resolved)):
-                        visit(resolved, depth + 1)
+                    if resolved is not None and resolved in seen:
+                        continue
+                    if is_req and resolved is not None and depth < MAX_INCLUDE_DEPTH:
+                        if ctx.follows >= MAX_INCLUDES_FOLLOWED:
+                            unsupported_add("(include limit)")
+                        elif ctx.followable(resolved):
+                            ctx.follows += 1
+                            visit(resolved, depth + 1)
+                        else:
+                            unsupported_add(_label(resolved))
                     else:
-                        unsupported.append(_label(resolved))
+                        unsupported_add(_label(resolved))
                     continue
                 m = _INDEX_URL.match(line)
                 if m:
-                    state["index_private"] = _host(m.group(1)) not in PUBLIC_PY_HOSTS
+                    state["index_private"] = not _public(m.group(1), PUBLIC_PY_HOSTS)
                     continue
                 m = _EXTRA_INDEX.match(line)
                 if m:
-                    if _host(m.group(1)) not in PUBLIC_PY_HOSTS:
+                    if not _public(m.group(1), PUBLIC_PY_HOSTS):
                         state["extra"] = True
                     continue
                 if _FIND_LINKS.match(line):
                     state["extra"] = True
                     continue
+                m = _TRUSTED_HOST.match(line)
+                if m:
+                    if _bare_host(m.group(1)) not in PUBLIC_PY_HOSTS:
+                        state["extra"] = True
+                    continue
                 if _EDITABLE.match(line):
                     if pending() >= MAX_DEPENDENCIES:
                         col.dropped[rel] += 1
                     else:
-                        deps_found.append((line, None, "local_or_git", rel))
+                        deps_found.append((_spec_label(line), None, "local_or_git", rel))
                 continue
             if pending() >= MAX_DEPENDENCIES:
                 col.dropped[rel] += 1
@@ -571,6 +882,9 @@ def _read_requirements_tree(ctx, root_rel: str) -> set:
         col.add("pypi", name, version, rel, reason)
     for label in unsupported:
         col.add("unknown", label, None, label, "unsupported_manifest", force=True)
+    if over_labels:
+        col.add("unknown", "(include limit)", None, "(include limit)", "unsupported_manifest", force=True,
+                count=over_labels)
     return seen
 
 
@@ -587,11 +901,12 @@ def _pyproject_sources(data):
         elif isinstance(block, list):
             entries.extend(b for b in block if isinstance(b, dict))
     urls = [e.get("url") for e in entries if isinstance(e.get("url"), str)]
-    for key in ("index-url", "extra-index-url"):
-        v = uv.get(key)
-        urls.extend([v] if isinstance(v, str) else [x for x in v if isinstance(x, str)] if isinstance(v, list) else [])
-    private = any(_host(u) not in PUBLIC_PY_HOSTS for u in urls)
-    names = {e["name"]: _host(e.get("url")) in PUBLIC_PY_HOSTS for e in entries
+    pip = uv.get("pip") if isinstance(uv.get("pip"), dict) else {}
+    for table in (uv, pip):
+        for key in ("index-url", "extra-index-url"):
+            urls.extend(_as_list(table.get(key)))
+    private = any(not _public(u, PUBLIC_PY_HOSTS) for u in urls) or bool(uv.get("find-links") or pip.get("find-links"))
+    names = {e["name"]: _public(e.get("url"), PUBLIC_PY_HOSTS) for e in entries
              if isinstance(e.get("name"), str) and isinstance(e.get("url"), str)}
     return private, names
 
@@ -710,13 +1025,17 @@ def read_dependencies(inv: Inventory) -> list[Dependency]:
             r = _resolve_include(rel, target)
             if r:
                 included.add(r)
+    for m in inv.manifests:
+        if m.kind == "package.json":
+            data = ctx.package_json(m.rel)
+            if isinstance(data, dict) and isinstance(data.get("name"), str):
+                ctx.member_names.add(data["name"])
     consumed: set = set()
     for m in inv.manifests:
         prefix = posixpath.dirname(m.rel)
         prefix = prefix + "/" if prefix else ""
         if m.kind == "package.json":
-            lock = prefix + "package-lock.json"
-            _read_npm(ctx, m.rel, lock if lock in rels else None)
+            _read_npm(ctx, m.rel)
         elif m.kind == "package-lock.json":
             if prefix + "package.json" not in rels:
                 _read_npm_lock_only(ctx, m.rel)
@@ -815,21 +1134,25 @@ def _assemble(inv, coords: dict, excluded: Counter) -> dict:
             by_scope.setdefault(_scope_of(c), []).append(c)
     scope_names = sorted(by_scope)
     own, rest = scope_names[:MAX_SCOPE_REQUESTS], scope_names[MAX_SCOPE_REQUESTS:]
-    groups = [(c, f"{len(c)} unscoped dependencies") for c in _batches(unscoped)]
+    def n_of(n, one, many):
+        return f"{n} {one if n == 1 else many}"
+
+    warn = " Scoped packages are sent by name. If this scope is your organisation's private scope, strike this request."
+    groups = [(c, n_of(len(c), "unscoped dependency", "unscoped dependencies"), "") for c in _batches(unscoped)]
     for s in own:
-        groups += [(b, f"{len(b)} packages of scope {s} (strike this request if the scope is private)")
-                   for b in _batches(by_scope[s])]
+        groups += [(b, f"{n_of(len(b), 'package', 'packages')} of scope {s}", warn) for b in _batches(by_scope[s])]
     merged = sorted(c for s in rest for c in by_scope[s])
-    groups += [(b, f"{len(b)} packages of other scopes (strike this request if one of the scopes is private)")
+    groups += [(b, f"{n_of(len(b), 'package', 'packages')} of other scopes",
+                warn.replace("this scope is your organisation's private scope", "any of these scopes is private"))
                for b in _batches(merged)]
     requests, mapping = [], {}
-    for n, (batch, what) in enumerate(groups, 1):
+    for n, (batch, what, warning) in enumerate(groups, 1):
         rid = f"cd-{n}"
         requests.append({
             "id": rid, "method": "POST", "url": CD_URL,
             "body": json.dumps(batch, separators=(",", ":")),
             "headers": {"Content-Type": "application/json"},
-            "purpose": f"licence lookup for {what} (name and version only)",
+            "purpose": f"licence lookup for {what} (name and version only).{warning}",
             "source": None,
         })
         mapping[rid] = [[manifests.index(m) for m in coords[c]] for c in batch]
@@ -940,7 +1263,9 @@ def _error(code, detail="", request_id=None):
 
 
 _REASON_NOTES = {
-    "private_registry": "dependencies resolved from a private registry or index were not sent",
+    "private_registry": "dependencies resolved from a private registry or index were not sent; mirrors and "
+                        "proxies of public registries cannot be told apart from private ones and are excluded too "
+                        "(fails closed)",
     "private_registry_possible": "the project configures an extra package index, so the source of each package "
                                  "cannot be told; none of those dependencies was sent",
     "local_version": "PEP 440 local version labels (+...) were not sent",
@@ -953,6 +1278,8 @@ _REASON_NOTES = {
     "ignored_manifest": "manifests ignored by .gitignore were not read",
     "unsupported_manifest": "manifests (or includes) this scanner cannot read were not looked up",
     "no_tomllib": "pyproject.toml needs Python 3.11 or newer",
+    "config_unreadable": "a configuration file could not be read (too large, binary, not valid text or TOML, or a "
+                         "directory); dependencies in its scope were treated as private_registry_possible",
     "no_manifests": "no dependency manifest was found; nothing was looked up",
 }
 
