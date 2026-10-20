@@ -21,14 +21,14 @@ Install once: `pip install -r <skill dir>/requirements.txt`.
 python -I <skill dir>/scripts/scan.py <file> [--profile general|academic|technical|marketing]
 ```
 
-`<skill dir>` is the directory this SKILL.md was loaded from. Formats: md, txt, docx, pdf. Pick `academic` for papers, `technical` for READMEs and docs, `marketing` for promo copy, else `general`.
+`<skill dir>` is the directory this SKILL.md was loaded from. Formats: md, txt, docx, pdf. Pick `academic` for papers, `technical` for READMEs and docs, `marketing` for promo copy, else `general`. Profiles currently only filter catalog entries that declare a `profiles` list, and none do yet, so all profiles behave the same today.
 
 ## Read the JSON
 
-- `error`: `file_not_found`, `unsupported_format`, `unreadable_file`, or `no_text_extracted` (usually a scanned PDF that needs OCR). Tell the user and stop.
-- `findings`: `line`, `text`, `pattern_id`, `category`, `source`, `weight`, `contested`. Contested findings (for example the em dash) are low weight: list them apart and do not count them.
-- `sections`: `dense: true` means three or more categories in one section. These are the places worth attention.
-- `density_per_1k`: weighted hits per 1,000 words. `stats`: sentence and vocabulary statistics.
+- `error`: `file_not_found`, `unsupported_format`, `unreadable_file`, `catalog_error` (broken pattern catalog, see `detail`), or `no_text_extracted` (empty input, or usually a scanned PDF that needs OCR). Tell the user and stop.
+- `findings`: `line`, `text`, `pattern_id`, `category`, `source`, `weight`, `contested`. Contested findings (for example the em dash) are low weight: they are listed but excluded from the density figure and from the category count.
+- `sections`: `dense: true` means three or more categories in one section and a high weighted density there (`density_per_1k` of the section against `DENSE_MIN_PER_1K` in `scan.py`). These are the places worth attention. Text without Markdown headings is one section.
+- `density_per_1k`: weighted non-contested hits per 1,000 words. `stats`: sentence and vocabulary statistics.
 - `language_note`: set when the text does not look English. The patterns are English, so say results are unreliable.
 
 ## Optional judgement pass
@@ -48,7 +48,7 @@ Never output an "AI probability", a percentage likelihood, a score of how AI-wri
 
 ## Network
 
-The skill makes no network calls. The one exception is the optional `scripts/check_dois.py`, which sends only DOIs to api.crossref.org to check that cited references resolve. Offer it only for texts with references, and run it only if the user agrees. `--offline` guarantees no requests.
+The skill makes no network calls. The one exception is the optional `scripts/check_dois.py`, which sends only DOIs to api.crossref.org to check that cited references resolve. Offer it only for texts with references, and run it only if the user agrees. `--offline` guarantees no requests. This guarantee covers requests made by the skill's scripts; text Claude reads is already in the model's context. DOIs that contain `<` or `>` (for example some AMS/SICI DOIs) are truncated by the extractor and may come back `not_found` falsely.
 
 ## Caveats to state
 
