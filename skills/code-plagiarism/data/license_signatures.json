@@ -1,0 +1,70 @@
+{
+  "MIT": [
+    "Permission is hereby granted, free of charge, to any person obtaining a copy",
+    "\\b(?:released|licensed|distributed|available) under (?:the )?MIT\\b",
+    "\\bThe MIT License\\b",
+    "^\\s*MIT License\\b"
+  ],
+  "Apache-2.0": [
+    "Licensed under the Apache License,? Version 2\\.0",
+    "Apache License,?\\s+Version 2\\.0",
+    "\\bApache[- ]2\\.0\\b"
+  ],
+  "GPL-2.0-only": [
+    "(?<!Lesser )(?<!Library )General Public License[^.]{0,200}?version 2 of the License(?!,? or)",
+    "(?<!Lesser )(?<!Library )General Public License,? (?:version 2|v2)(?:\\.0)? only"
+  ],
+  "GPL-2.0-or-later": [
+    "(?<!Lesser )(?<!Library )General Public License[^.]{0,250}?either version 2 of the License,? or \\(at your option\\) any later version"
+  ],
+  "GPL-3.0-only": [
+    "(?<!Lesser )(?<!Library )General Public License[^.]{0,200}?version 3 of the License(?!,? or)",
+    "(?<!Lesser )(?<!Library )General Public License,? (?:version 3|v3)(?:\\.0)? only"
+  ],
+  "GPL-3.0-or-later": [
+    "(?<!Lesser )(?<!Library )General Public License[^.]{0,250}?either version 3 of the License,? or \\(at your option\\) any later version"
+  ],
+  "LGPL-2.1": [
+    "Lesser General Public License[^.]{0,250}?version 2\\.1",
+    "Lesser General Public License,? v2\\.1"
+  ],
+  "LGPL-3.0": [
+    "Lesser General Public License[^.]{0,250}?version 3",
+    "Lesser General Public License,? v3"
+  ],
+  "AGPL-3.0": [
+    "Affero General Public License"
+  ],
+  "BSD-2-Clause": [
+    "^(?!.*Neither the name)(?!.*names of its contributors).*Redistribution and use in source and binary forms"
+  ],
+  "BSD-3-Clause": [
+    "Redistribution and use in source and binary forms.{0,1500}?(?:Neither the name|names of its contributors)"
+  ],
+  "MPL-2.0": [
+    "Mozilla Public License,? (?:Version |v\\.? ?)2\\.0"
+  ],
+  "ISC": [
+    "Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee",
+    "^\\s*ISC License\\b"
+  ],
+  "Unlicense": [
+    "This is free and unencumbered software released into the public domain"
+  ],
+  "CC-BY-SA-3.0": [
+    "Attribution-ShareAlike 3\\.0",
+    "\\bCC[ -]BY-SA[ -]3\\.0\\b"
+  ],
+  "CC-BY-SA-4.0": [
+    "Attribution-ShareAlike 4\\.0",
+    "\\bCC[ -]BY-SA[ -]4\\.0\\b"
+  ],
+  "CC-BY-4.0": [
+    "Creative Commons Attribution 4\\.0",
+    "\\bCC[ -]BY[ -]4\\.0\\b"
+  ],
+  "CC0-1.0": [
+    "\\bCC0[ -]1\\.0\\b",
+    "Creative Commons Zero"
+  ]
+}
