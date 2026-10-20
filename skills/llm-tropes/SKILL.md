@@ -1,6 +1,7 @@
 ---
 name: llm-tropes
 description: Scans a text, draft, paper section, README or post for "AI writing" tells, LLM tropes and slop (when asked whether it "sounds like ChatGPT" or has "AI tells"), and reports matched lines with sources and tell density. Reports evidence only and gives no verdict on who wrote the text.
+license: Apache-2.0
 ---
 
 # llm-tropes
@@ -15,7 +16,7 @@ Do not use for: rewriting or humanising text (offer it separately), deciding whe
 
 ## Run the scan
 
-Install once: `pip install -r <skill dir>/requirements.txt`.
+Install once: `pip install -r <skill dir>/requirements.txt` (runtime dependencies only).
 
 ```
 python -I <skill dir>/scripts/scan.py <file> [--profile general|academic|technical|marketing]

@@ -1,0 +1,25 @@
+research-scanners
+Copyright 2026 The research-scanners contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE),
+except for the third-party material listed below.
+
+Third-party material
+====================
+
+1. skills/llm-tropes/data/patterns_wikipedia.json
+   Derived from the English Wikipedia page "Signs of AI writing"
+   (https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing).
+   License: Creative Commons Attribution-ShareAlike 4.0
+   (https://creativecommons.org/licenses/by-sa/4.0/).
+   This file remains under CC BY-SA 4.0 and is not relicensed under Apache-2.0.
+
+2. MIT-licensed trope catalogues, credited in skills/llm-tropes/data/ATTRIBUTION.md
+   (reworded ideas; notices retained). The full MIT notice is in that file.
+   - FeedHive, https://github.com/FeedHive/ai-slop-detector - "Copyright (c) 2026 FeedHive"
+   - wsc, https://github.com/theserverlessdev/wsc - "Copyright (c) 2025-2026 Ankur Singh"
+   - blader/humanizer, https://github.com/blader/humanizer - "Copyright (c) 2025 Siqi Chen"
+   - Aboudjem, https://github.com/Aboudjem/humanizer-skill - "Copyright (c) 2026 Adam Boudjemaa"
+
+3. Test fixtures under tests/ (where present for other skills) carry their own
+   licenses, recorded in each tests/<skill>/fixtures/PROVENANCE.md.
