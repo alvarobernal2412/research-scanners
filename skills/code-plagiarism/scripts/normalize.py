@@ -24,9 +24,10 @@ Comparison (``compare`` / ``compare_all``), as implemented:
    K_GRAM + MAX_GAP_TOKENS positions) picks the chain with the most matched
    tokens, each exact raw-token window counting double so a later verbatim copy
    beats an earlier renamed one. The look-back has a work reservation of
-   MAX_LOOKBACK_WORK steps per block of 2048 anchors; once a block's reservation
-   is spent, gaps are no longer bridged for the rest of that block only, so a
-   noisy region cannot disable bridging elsewhere in the file.
+   MAX_LOOKBACK_WORK = 120_000 steps per block of 2048 anchors (about 60 steps
+   per anchor, enough for dense real code); once a block's reservation is spent,
+   gaps are no longer bridged for the rest of that block only (anchors there
+   start new chains), so a noisy region cannot disable bridging elsewhere.
 3. Spans come only from the chosen chain (first/last matched token on each
    side, ``a_end``/``b_end`` exclusive). Each end is then trimmed (up to
    K_GRAM - 1 tokens) where the raw tokens differ, because a chance normalised
@@ -34,7 +35,7 @@ Comparison (``compare`` / ``compare_all``), as implemented:
    raw-identical, each end is cut back past the last raw mismatch within
    K_GRAM - 1 tokens and the cut is kept only when that makes the span
    raw-identical (a genuinely renamed copy keeps its span). ``coverage`` =
-   matched tokens / max(a span, b span), so insertions on either side lower it
+   matched tokens / max(a span, b span) (1.0 for raw-identical spans), so insertions on either side lower it
    equally and compare(a, b) mirrors compare(b, a). ``LocalMatch.tokens`` is
    that longer span length, not the matched count.
 4. Filters. Both spans need >= MIN_MATCH_TOKENS tokens and >= MIN_MATCH_LINES
@@ -63,7 +64,10 @@ within MAX_DIAG_DRIFT; edits whose gap on either side exceeds MAX_GAP_TOKENS
 split the match into separate regions; heavily repeated k-grams never anchor,
 so a very repetitive file compared with itself can yield only partial regions
 (pair-cap design) and giant identical files are not guaranteed to be found whole;
-compare_all(a, b) and compare_all(b, a) can differ in rare ties; noise that
+compare_all(a, b) and compare_all(b, a) can differ in rare ties; pure data tables
+and very low-symbol code never anchor (pair cap, MIN_WINDOW_DISTINCT); identical
+files of 250k+ tokens return None; small ``near`` hits (about 50-90 tokens at
+coverage 0.5-0.8) between unrelated files are chance idioms, left to triage; noise that
 yields many long rejected chains can use up the examined-chain budget before a
 real region is reached.
 """
@@ -87,7 +91,7 @@ NEAR_MIN_COVERAGE = 0.5
 MIN_KGRAM_VARIETY = 0.5
 MIN_DISTINCT_KGRAMS = 20
 MAX_ANCHORS = 250_000
-MAX_LOOKBACK_WORK = 12_000  # look-back steps per block of _LOOKBACK_BLOCK anchors (bounds hostile input)
+MAX_LOOKBACK_WORK = 120_000  # look-back steps per block of _LOOKBACK_BLOCK anchors (bounds hostile input)
 _LOOKBACK_BLOCK = 2048
 MIN_WINDOW_DISTINCT = 4  # a k-gram window needs this many distinct normalised tokens to anchor
 MIN_RETRY_TOKENS = 60  # a region found only after dropping repeated k-grams must be this long
@@ -349,10 +353,12 @@ def _finish(a, b, ra, rb, na, nb, ha, hb, span, matched, min_tokens):
     la, lb = token_line_span(a, a_s, a_e), token_line_span(b, b_s, b_e)
     if min(la[1] - la[0], lb[1] - lb[0]) + 1 < MIN_MATCH_LINES:
         return None, False
-    coverage = min(1.0, matched / max(a_len, b_len))
+    verbatim = ra[a_s:a_e] == rb[b_s:b_e]
+    # Raw-identical spans match token for token, even where boilerplate k-grams
+    # (dropped by the pair cap) left holes in the anchor chain.
+    coverage = 1.0 if verbatim else min(1.0, matched / max(a_len, b_len))
     if coverage < NEAR_MIN_COVERAGE:
         return None, False
-    verbatim = ra[a_s:a_e] == rb[b_s:b_e]
     # Variety is required on both sides, except for verbatim copies (repetitive
     # code copied whole is still a copy).
     if not verbatim and not (_variety_ok(ha, a_s, a_e) and _variety_ok(hb, b_s, b_e)):

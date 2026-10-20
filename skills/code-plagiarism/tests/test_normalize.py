@@ -138,7 +138,7 @@ def test_perf_nested_brackets():
 # ---------------------------------------------------------------- round 1 fixes
 import random  # noqa: E402
 
-from normalize import (MAX_DIAG_DRIFT, MIN_DISTINCT_KGRAMS, MIN_KGRAM_VARIETY,  # noqa: E402
+from normalize import (MIN_RETRY_TOKENS, MAX_DIAG_DRIFT, MIN_DISTINCT_KGRAMS, MIN_KGRAM_VARIETY,  # noqa: E402
                        MIN_MATCH_LINES, NEAR_MIN_COVERAGE, compare_all)
 
 
@@ -557,3 +557,146 @@ def test_noisy_prefix_does_not_disable_bridging():
     b = toks_js(noise[::-1] + orig[:10] + ["  n++;"] * 12 + orig[10:])
     ms = compare_all(a, b)
     assert any(m.match_type == "near" and m.a_end - m.a_start >= 60 and m.a_end == len(a) for m in ms)
+
+
+# ---------------------------------------------------------------- round 3 fixes
+def gen_python_module(seed, n_classes=8, tag="m"):
+    """Dense, realistic-looking Python: classes, methods, loops, formatting, repeated idioms."""
+    rnd = random.Random(seed)
+    names = ["alpha", "beta", "gamma", "delta", "omega", "sigma", "theta", "kappa", "lambda_", "zeta"]
+    out = [f'"""Generated module {tag}{seed}."""', "import os", "import sys", "import logging", "",
+           "log = logging.getLogger(__name__)", ""]
+    for c in range(n_classes):
+        cname = f"{tag.title()}{seed}Handler{c}"
+        out += [f"class {cname}(object):", f'    """Handle {rnd.choice(names)} requests."""', "",
+                "    def __init__(self, host, port=%d, timeout=%s):" % (
+                    rnd.randrange(1000, 9999), rnd.choice(["None", "30", "5.5"])),
+                "        self.host = host", "        self.port = port", "        self._cache = {}",
+                f"        self._{rnd.choice(names)} = [] if port else None", ""]
+        for m in range(6):
+            a, b, k = rnd.choice(names), rnd.choice(names), rnd.randrange(2, 90)
+            sig = rnd.choice([f"self, {b}", f"self, {b}, *args", f"self, {b}=None, **kwargs",
+                              f"self, {b}, flag=False", f"self, *{b}", f"self"])
+            out.append(f"    def {a}_{m}({sig}):")
+            if rnd.random() < 0.6:
+                out.append(f'        """{a.title()} the {b} ({k} items)."""')
+            for _ in range(rnd.randrange(2, 5)):
+                st = rnd.randrange(14)
+                out += [
+                    [f"        for i, item in enumerate({b}):", f"            if item % {k} == 0:",
+                     f"                self._cache[item] = '%s-%d' % ('{a}', i)"],
+                    ["        result = []", f"        while len(result) < {k}:", f"            result.append({b})"],
+                    ["        try:", f"            value = int({b}) + {k}", "        except (TypeError, ValueError):",
+                     f"            value = {k}"],
+                    [f"        data = dict((key, val) for key, val in self._cache.items() if val != {k})"],
+                    [f"        path = os.path.join(self.host, '{a}', str({b}))"],
+                    [f"        if not os.path.exists(self.host) and {k} > {m}:", f"            os.makedirs(self.host)"],
+                    [f"        log.debug('{a} %r after %d', {b}, {k})"],
+                    [f"        self.port += {k} * {m + 1}"],
+                    [f"        assert isinstance({b}, (list, tuple)), '{b} must be a sequence'"],
+                    [f"        with open(self.host + '.{a}') as fh:", f"            lines = [ln.strip() for ln in fh if ln]"],
+                    [f"        if self._cache.get({k}) is None:", f"            raise KeyError('{b}-{k}')"],
+                    [f"        return {{'{a}': {k}, '{b}': self.port % {k + 1}}}"],
+                    [f"        yield from sorted(self._cache, key=lambda e: (e % {k}, -e))"],
+                    [f"        print('%s:%d' % (self.host, {k}), file=sys.stderr)"],
+                ][st]
+            out.append("")
+        out.append("")
+    out += ["def main(argv=None):", "    argv = argv or sys.argv[1:]", "    return 0", ""]
+    return out
+
+
+def test_real_file_sized_self_copy_is_exact_whole_span():
+    x = tokenize(gen_python_module(1), "hash")
+    assert len(x) > 3000
+    m = compare(x, x)
+    assert m is not None and m.match_type == "exact"
+    assert (m.a_start, m.a_end, m.b_start, m.b_end) == (0, len(x), 0, len(x))
+    assert m.tokens == len(x)
+    assert len(compare_all(x, x)) == 1
+
+
+def test_real_file_paste_both_directions_mirrored():
+    x_lines = gen_python_module(1)
+    host_lines = gen_python_module(2, tag="h")
+    x = tokenize(x_lines, "hash")
+    b = tokenize(host_lines[:150] + x_lines + host_lines[150:], "hash")
+    m, r = compare(x, b), compare(b, x)
+    assert m is not None and r is not None
+    assert m.match_type == r.match_type == "exact"
+    assert (m.tokens, m.coverage) == (r.tokens, r.coverage) and m.tokens == len(x)
+    assert (m.a_start, m.a_end) == (r.b_start, r.b_end) == (0, len(x))
+    assert (m.b_start, m.b_end) == (r.a_start, r.a_end)
+    assert token_line_span(b, m.b_start, m.b_end)[0] in (151, 152, 153, 154, 155)
+
+
+def test_mutated_pastes_are_symmetric():
+    x_lines = gen_python_module(3, n_classes=4)
+    host = gen_python_module(4, n_classes=4, tag="h")
+    for seed in range(30):
+        rnd = random.Random(100 + seed)
+        edited = list(x_lines)
+        for _ in range(rnd.randrange(1, 6)):
+            i = rnd.randrange(len(edited))
+            kind = rnd.randrange(3)
+            if kind == 0:
+                edited[i] = edited[i].replace("self", "this", 1) if "self" in edited[i] else edited[i] + "  # x"
+            elif kind == 1:
+                edited.insert(i, f"        tmp{seed} = {rnd.randrange(99)}")
+            else:
+                edited[i] = edited[i].replace("item", "elem")
+        a = tokenize(x_lines, "hash")
+        b = tokenize(host[:80] + edited + host[80:], "hash")
+        m, r = compare(a, b), compare(b, a)
+        assert (m is None) == (r is None), seed
+        if m is not None:
+            assert (m.match_type, m.coverage) == (r.match_type, r.coverage), seed
+
+
+def test_lookback_budget_constant():
+    from normalize import MAX_LOOKBACK_WORK
+    assert MAX_LOOKBACK_WORK == 120_000
+
+
+def test_retry_guards_and_trim_loops_are_load_bearing():
+    # a short function (< MIN_RETRY_TOKENS) next to boilerplate blocks is not resurrected
+    short_a = ["def tiny(runs):", "    runs = sorted(runs)", "    out = [list(runs[0])]",
+               "    for lo, hi in runs[1:]:", "        out.append([lo, hi])", "    return out"]
+    short_b = [l.replace("runs", "segs").replace("out", "acc").replace("lo", "s").replace("hi", "e")
+               for l in short_a]
+    a = tokenize(kw_blocks("a", 3) + short_a, "hash")
+    b = tokenize(kw_blocks("b", 3) + short_b, "hash")
+    assert len(tokenize(short_a, "hash")) < MIN_RETRY_TOKENS
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_end_trim_removes_chance_normalised_tail():
+    # chance normalised neighbours on each side of a verbatim paste: the span is the paste
+    func = filler(30, "tt", 41)
+    a = toks_js(filler(40, "pa", 42) + ["foo"] + func + ["bar"] + filler(40, "pb", 43))
+    b = toks_js(filler(40, "qa", 44) + ["baz"] + func + ["qux"] + filler(40, "qb", 45))
+    m = compare(a, b)
+    assert m is not None and m.match_type == "exact" and m.tokens == len(toks_js(func))
+
+
+def test_budget_reserved_per_block_not_global():
+    # 6-symbol noise anchors heavily and would drain a global quota before the real copy
+    rnd = random.Random(9)
+    noise = [" ".join(rnd.choice("()[];,") for _ in range(10)) for _ in range(12000)]
+    orig = c1()
+    a = toks_js(noise + orig)
+    b = toks_js(noise[::-1] + orig[:10] + ["  n++;"] * 12 + orig[10:])
+    ms = compare_all(a, b)
+    assert any(m.match_type == "near" and m.a_end == len(a) and m.a_end - m.a_start >= 60 for m in ms)
+
+
+def test_renamed_copy_span_excludes_chance_neighbour_tokens():
+    c10 = read_lines(next((CASES / "C10").glob("*.js")))
+    host_a, host_b = filler(40, "na", 51), filler(40, "nb", 52)
+    a = toks_js(host_a + ["alpha"] + c1() + ["omega"] + host_a)
+    b = toks_js(host_b + ["gamma"] + c10 + ["sigma"] + host_b)
+    n = len(toks_js(c1()))
+    for p, q in ((a, b), (b, a)):
+        m = compare(p, q)
+        assert m is not None and m.match_type == "normalised" and m.tokens == n
+        assert p[m.a_start].text in ("async", "function") and p[m.a_end - 1].text == ";"
