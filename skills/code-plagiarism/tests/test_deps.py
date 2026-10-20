@@ -143,6 +143,9 @@ def test_coordinates_npm_scoped_and_pypi_normalised():
     assert deps.coordinate(Dependency("npm", "is-odd", "3.0.1", "p", None)) == "npm/npmjs/-/is-odd/3.0.1"
     assert deps.coordinate(Dependency("npm", "@sc/pkg", "1.0.0", "p", None)) == "npm/npmjs/@sc/pkg/1.0.0"
     assert deps.coordinate(Dependency("pypi", "My_Pkg", "1.0", "p", None)) == "pypi/pypi/-/my-pkg/1.0"
+    # PEP 503 normalisation (overrides the brief's "lowercase, _ -> -")
+    assert deps.coordinate(Dependency("pypi", "Foo_Bar.baz", "1.0", "p", None)) == "pypi/pypi/-/foo-bar-baz/1.0"
+    assert deps.coordinate(Dependency("pypi", "a__b--c", "1.0", "p", None)) == "pypi/pypi/-/a-b-c/1.0"
     assert deps.coordinate(Dependency("pypi", "x", None, "p", "unpinned")) is None
     assert deps.coordinate(Dependency("pypi", "x", "1.0", "p", "local_or_git")) is None
 
