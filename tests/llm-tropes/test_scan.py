@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "llm-tropes" / "scripts"))
 
 from extract import Line  # noqa: E402
 from patterns import Pattern, load_patterns  # noqa: E402

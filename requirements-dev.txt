@@ -1,0 +1,2 @@
+-r skills/llm-tropes/requirements.txt
+pytest

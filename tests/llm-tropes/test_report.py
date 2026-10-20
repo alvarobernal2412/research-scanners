@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "llm-tropes" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from patterns import load_patterns  # noqa: E402

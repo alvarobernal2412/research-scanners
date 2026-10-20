@@ -2,11 +2,11 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "llm-tropes" / "scripts"))
 
 from patterns import load_patterns  # noqa: E402
 
-DATA = Path(__file__).resolve().parent.parent / "data"
+DATA = Path(__file__).resolve().parents[2] / "skills" / "llm-tropes" / "data"
 CATEGORIES = {"lexical", "structural", "rhetorical", "document", "formatting", "chatbot_residue"}
 
 

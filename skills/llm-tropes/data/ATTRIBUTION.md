@@ -2,7 +2,7 @@
 
 The pattern catalog is a set of descriptive signals, not proof of AI authorship.
 
-Convention: each pattern's `source` field is `<Name> — <detail/URL>`, several joined by `; `. The text before ` — ` is the short source name, and every short name must appear in this file (checked by `tests/test_catalog.py`).
+Convention: each pattern's `source` field is `<Name> — <detail/URL>`, several joined by `; `. The text before ` — ` is the short source name, and every short name must appear in this file (checked by `tests/llm-tropes/test_catalog.py` in the source repository).
 
 ## Wikipedia (CC BY-SA 4.0)
 

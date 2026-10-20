@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "llm-tropes" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import check_dois  # noqa: E402
