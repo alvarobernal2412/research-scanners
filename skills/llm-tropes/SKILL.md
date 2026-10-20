@@ -58,7 +58,7 @@ The skill makes no network calls. The one exception is the optional `scripts/che
 
 ## Evaluation
 
-`python -I <skill dir>/scripts/evaluate.py <cases.json>` scores the scanner against human-labelled cases (precision and recall per category). Maintainer tool; not part of a normal scan.
+`python -I <skill dir>/scripts/evaluate.py <cases.json>` scores the scanner against human-labelled cases (precision and recall per category). By default a category counts as predicted only when it appears in a dense section (labels mean "expected in a dense section", and the result adds a `document_dense` score); `--level finding` scores any non-contested finding instead. Maintainer tool; not part of a normal scan.
 
 ## Attribution
 
