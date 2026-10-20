@@ -24,6 +24,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -53,24 +54,42 @@ _FORBIDDEN_HEADERS = {"user-agent", "host", "content-length", "transfer-encoding
 _REL_ABS_RE = re.compile(r"^(?:[A-Za-z]:|[\\/])|(?<![A-Za-z])[A-Za-z]:[\\/]")
 # Absolute local paths anywhere in the plan. A POSIX path only counts at the start of a string or
 # after whitespace, a quote, '=', ',', '(' or '['; so URL paths after a host are not flagged.
-_ABS_ANY_RE = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]"
-    r"|(?:^|[\s\"'=,(\[])(?:\\\\[^\s\\]+\\|/(?:home|Users|root|tmp|var|mnt|etc|opt|usr)(?:/|\b))", re.I)
+# Absolute local paths anywhere in the plan (fail closed). A POSIX path only counts at the start of a
+# string or after whitespace, a quote, '=', ',', '(' or '[', so URL paths after a host are not flagged.
+# Scanned by candidate positions (not one big alternation) so multi-megabyte bodies stay fast.
+_ABS_TRIGGER = re.compile(r"[:/\\~]")
+_ABS_AT = re.compile(
+    r"\\\\[^\s\\]+\\|~[\\/]|/(?:[A-Za-z]/|(?:home|Users|root|tmp|var|mnt|etc|opt|usr"
+    r"|Volumes|srv|workspace|data|private)(?:/|\b))", re.I)
+_ABS_CTX = frozenset("\"'=,([")
+_ABS_LITERALS = ("file:/", "%userprofile%", "%homepath%", "%appdata%", "%homedrive%", "%localappdata%")
+_HOME_VAR = re.compile(r"\$\{?home\b")
 _CREATED_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 _IDS_RE = re.compile(r"[0-9]+(?:;[0-9]+)*", re.ASCII)
 _PLACEHOLDER = "{ids}"
 TOKEN_RE = re.compile(r"\{secret:([A-Z_][A-Z0-9_]*)\}")
 _PARAM_NAME_RE = re.compile(r"[A-Za-z0-9_]+")
 _MIN_LEAK_LEN = 6
+MAX_SCAN_BYTES = 16 * 1024 * 1024
+SECRET_PARAMS = frozenset({"key", "api_key", "apikey", "access_key", "token", "secret", "password", "auth"})
+_HEX_RE = re.compile(r"[0-9a-fA-F]{8,128}")
+_MAX_FIND_NEEDLES = 30
+_RUN_WINDOW = 8
+_RUN_OP_BUDGET = 1_000_000
 _MIN_BASENAME_LEN = 10
-_MAX_SLOW_NEEDLES = 200
-_MAX_RUN_COMPONENTS = 64
 _TOKEN_SPLIT = re.compile(r"[^\s\"'`<>(){}\[\],;:=&?|*#!]+")
+_DELIMS = "\"'`<>(){}[],;:=&?|*#!"
+_TO_SPACE = str.maketrans({c: " " for c in _DELIMS})
+
+
+def _tokens(text: str) -> set:
+    """Same tokens as _TOKEN_SPLIT.findall, but at C speed (translate + split)."""
+    return set(text.translate(_TO_SPACE).split())
 
 
 class ApprovalError(Exception):
     """code in plan_not_found|plan_invalid|plan_hash_mismatch|request_not_in_plan|followup_not_allowed
-    |absolute_path_in_plan|output_exists|output_error"""
+    |absolute_path_in_plan|plan_too_large|output_exists|output_error"""
 
     def __init__(self, code: str, message: str = ""):
         super().__init__(message or code)
@@ -189,7 +208,17 @@ def _check_url(url, what: str, template: bool = False) -> None:
         if url.count(_PLACEHOLDER) != 1:
             _bad(f"{what}: url_template needs exactly one {_PLACEHOLDER}")
         probe = probe.replace(_PLACEHOLDER, "0")
-    tokens = list(TOKEN_RE.finditer(probe))
+    if template:
+        host_end = url.find("/", 8)
+        if host_end < 0 or url.find(_PLACEHOLDER) < host_end:
+            _bad(f"{what}: {_PLACEHOLDER} may only appear after the host")
+    if "?" in probe:
+        for pair in probe.split("?", 1)[1].split("&"):
+            name, _, val = pair.partition("=")
+            if (name.lower() in SECRET_PARAMS or "%" in name and unquote(name).lower() in SECRET_PARAMS) \
+                    and not TOKEN_RE.fullmatch(val):
+                _bad(f"{what}: secret-looking literal query parameter {name!r}; use the {{secret:NAME}} token")
+    tokens = list(TOKEN_RE.finditer(probe)) if "{secret:" in probe else []
     if probe.count("{secret:") != len(tokens) or len(tokens) > 1:
         _bad(f"{what}: at most one well-formed {{secret:NAME}} token is allowed")
     if tokens:
@@ -200,11 +229,11 @@ def _check_url(url, what: str, template: bool = False) -> None:
         q = probe.find("?")
         prefix = probe[:i - 1]
         k = max(prefix.rfind("?"), prefix.rfind("&"))
-        if (q < 0 or probe[i - 1:i] != "=" or k < q or not _PARAM_NAME_RE.fullmatch(prefix[k + 1:])
+        if (q < 0 or probe[i - 1:i] != "=" or k < q or prefix[k + 1:] != "key"
                 or probe[m.end():m.end() + 1] not in ("", "&")):
             _bad(f"{what}: the secret token must be the whole value of a query parameter")
         probe = probe.replace(m.group(0), "0")
-    if not _URL_RE.fullmatch(probe) or _CONTROL_RE.search(probe):
+    if not _URL_RE.fullmatch(probe):
         _bad(f"{what}: url must be https, printable ASCII, with no userinfo, fragment or backslash")
 
 
@@ -235,15 +264,35 @@ def _check_headers(headers, what: str) -> None:
 
 
 def _walk_strings(obj, out: list) -> None:
-    if isinstance(obj, str):
-        out.append(obj)
-    elif isinstance(obj, dict):
-        for k, v in obj.items():
-            _walk_strings(k, out)
-            _walk_strings(v, out)
-    elif isinstance(obj, (list, tuple)):
-        for v in obj:
-            _walk_strings(v, out)
+    """Collect every string (keys and values) without per-element recursion."""
+    stack = [obj]
+    pop, push, add = stack.pop, stack.extend, out.append
+    while stack:
+        o = pop()
+        t = type(o)
+        if t is str:
+            add(o)
+        elif t is dict:
+            push(o.keys())
+            push(o.values())
+        elif t is list or t is tuple:
+            push(o)
+
+
+def _has_absolute_path(joined: str) -> bool:
+    low = joined.lower()
+    if any(tok in low for tok in _ABS_LITERALS) or ("$home" in low or "${home" in low) and _HOME_VAR.search(low):
+        return True
+    for m in _ABS_TRIGGER.finditer(joined):
+        i = m.start()
+        if joined[i] == ":":
+            nxt, prev = joined[i + 1:i + 2], joined[i - 1:i] if i else ""
+            if (nxt in ("/", "\\") and nxt and prev.isascii() and prev.isalpha()
+                    and not (i >= 2 and joined[i - 2].isascii() and joined[i - 2].isalnum())):
+                return True
+        elif (i == 0 or joined[i - 1].isspace() or joined[i - 1] in _ABS_CTX) and _ABS_AT.match(joined, i):
+            return True
+    return False
 
 
 def validate_plan(plan: dict) -> None:
@@ -256,14 +305,15 @@ def validate_plan(plan: dict) -> None:
     missing = (_TOP_KEYS - {"sha256"}) - set(plan)
     if missing:
         _bad("missing plan fields: " + ", ".join(sorted(missing)))
-    if plan["version"] != PLAN_VERSION or isinstance(plan["version"], bool):
+    if type(plan["version"]) is not int or plan["version"] != PLAN_VERSION:
         _bad(f"unsupported plan version (expected {PLAN_VERSION})")
     _parse_created(plan["created"])
     if not isinstance(plan["backend"], str) or not plan["backend"]:
         _bad("backend must be a non-empty string")
     if plan["tier"] not in TIERS:
         _bad("tier must be one of " + "|".join(TIERS))
-    if not isinstance(plan["root"], str) or _REL_ABS_RE.search(plan["root"]):
+    if not isinstance(plan["root"], str) or _REL_ABS_RE.search(plan["root"]) \
+            or ".." in plan["root"].replace("\\", "/").split("/"):
         _bad("root must be a bare directory name, not an absolute path")
     if not isinstance(plan["disclosure"], list) or not all(isinstance(s, str) for s in plan["disclosure"]):
         _bad("disclosure must be a list of strings")
@@ -332,84 +382,133 @@ def validate_plan(plan: dict) -> None:
 
     strings: list = []
     _walk_strings(plan, strings)
-    for s in strings:
-        if _ABS_ANY_RE.search(s):
-            raise ApprovalError("absolute_path_in_plan",
-                                "the plan contains an absolute local path; use paths relative to the scan root")
+    # one pass: a newline separator gives every string the same "start of string" context
+    if _has_absolute_path("\n".join(strings)):
+        raise ApprovalError("absolute_path_in_plan",
+                            "the plan contains an absolute local path; use paths relative to the scan root")
 
 
 # ---- containment (build time only) -----------------------------------------------
 
+def _is_hash_entry(obj) -> bool:
+    return (isinstance(obj, dict) and set(obj) == {"kind", "value"} and obj["kind"] == "hash"
+            and isinstance(obj["value"], str) and bool(_HEX_RE.fullmatch(obj["value"])))
+
+
 def _local_needles(obj, out: set) -> None:
-    """Strings from local_only that must not appear in outgoing text (hash-kind entries exempt)."""
-    if isinstance(obj, str):
-        if len(obj) >= _MIN_LEAK_LEN:
-            out.add(obj)
-        if "/" in obj or "\\" in obj:
-            base = re.split(r"[\\/]", obj.rstrip("/\\"))[-1]
-            if len(base) >= _MIN_BASENAME_LEN:
-                out.add(base)
-    elif isinstance(obj, dict):
-        if obj.get("kind") == "hash":
-            return
-        for k, v in obj.items():
-            if isinstance(k, str) and ("/" in k or "\\" in k):
-                _local_needles(k, out)
-            _local_needles(v, out)
-    elif isinstance(obj, (list, tuple)):
-        for v in obj:
-            _local_needles(v, out)
+    """Strings from local_only that must not appear in outgoing text. Only the exact shape
+    {"kind": "hash", "value": <hex>} is exempt; every other string is scanned."""
+    stack = [obj]
+    while stack:
+        o = stack.pop()
+        t = type(o)
+        if t is str:
+            if len(o) >= _MIN_LEAK_LEN:
+                out.add(o)
+            if "/" in o or "\\" in o:
+                base = o.rstrip("/\\").replace("\\", "/").rsplit("/", 1)[-1]
+                if len(base) >= _MIN_BASENAME_LEN:
+                    out.add(base)
+        elif t is dict:
+            if _is_hash_entry(o):
+                continue
+            for k, v in o.items():
+                if type(k) is str and ("/" in k or "\\" in k):
+                    stack.append(k)
+                stack.append(v)
+        elif t is list or t is tuple:
+            stack.extend(o)
 
 
 def _norm(text: str) -> str:
     return text.casefold().replace("\\", "/")
 
 
-def _check_containment(plan: dict) -> None:
-    """Best-effort safety net, not a guarantee: no local_only string (or key / basename of a path) may
-    appear in any outgoing URL or body, also after percent-decoding. Near-linear: the outgoing text is
-    tokenised and looked up in a set instead of searching once per needle."""
-    raw: set = set()
-    _local_needles(plan["local_only"], raw)
-    if not raw:
-        return
-    fast, slow = set(), []
-    for n in raw:
-        n = _norm(n)
-        if _TOKEN_SPLIT.fullmatch(n):
-            fast.add(n)
-        else:
-            slow.append(n)
-    if len(slow) > _MAX_SLOW_NEEDLES:
-        _bad("too many local_only values with unusual characters to check safely")
+def _outgoing_text(plan: dict) -> str:
     parts = []
     for r in plan["requests"]:
         parts.append(r["url"])
         if r["body"]:
             parts.append(r["body"])
-    parts.extend(f["url_template"] for f in plan["followups"])
+        parts.extend(v for v in (r.get("headers") or {}).values() if isinstance(v, str))
+    for f in plan["followups"]:
+        parts.append(f["url_template"])
+        parts.extend(v for v in (f.get("headers") or {}).values() if isinstance(v, str))
     blob = "\n".join(parts)
+    if len(blob) > MAX_SCAN_BYTES:
+        raise ApprovalError("plan_too_large", "outgoing text is too large to check for local data")
+    return blob
+
+
+def _check_containment(plan: dict) -> None:
+    """Best-effort safety net, not a guarantee: no local_only string (nor a path-like key or the basename
+    of a path) may appear in any outgoing URL, body or header value, also after percent-decoding.
+
+    Near-linear. (1) The text is split into tokens and looked up in sets: exact needles by token or by a
+    bounded window of '/'-components; needles containing delimiter characters by their rarest token
+    (anchor), confirmed when the needle's interior tokens are present and a substring search succeeds.
+    (2) A substring search for a capped number (_MAX_FIND_NEEDLES) of the longest needles catches
+    occurrences glued to other characters. Beyond those caps only (1) applies."""
+    raw: set = set()
+    _local_needles(plan["local_only"], raw)
+    if not raw:
+        return
+    exact, slow = set(), []
+    for n in raw:
+        n = _norm(n)
+        if _TOKEN_SPLIT.fullmatch(n):
+            exact.add(n)
+        else:
+            slow.append(n)
+    run_count: dict = {}
+    split = [(n, _TOKEN_SPLIT.findall(n)) for n in slow]
+    for _n, runs in split:
+        for r in set(runs):
+            run_count[r] = run_count.get(r, 0) + 1
+    anchored: dict = {}
+    find_list = []
+    for n, runs in split:
+        cands = [r for r in runs if len(r) >= 3]
+        if not cands:
+            find_list.append(n)
+            continue
+        anchor = min(cands, key=lambda r: (run_count[r], -len(r)))
+        interior = tuple(r for r in runs[1:-1] if r != anchor)
+        anchored.setdefault(anchor, []).append((n, interior))
+    ordered = sorted(exact, key=len, reverse=True)
+    find_list += [n for n in ordered if "/" in n or "." in n or len(n) >= 12]
+    find_list = find_list[:_MAX_FIND_NEEDLES]
+    blob = _outgoing_text(plan)
     texts = [blob]
     if "%" in blob:
-        from urllib.parse import unquote
-        texts.append(unquote(blob))
+        decoded = unquote(blob)
+        if len(decoded) > MAX_SCAN_BYTES:
+            raise ApprovalError("plan_too_large", "outgoing text is too large to check for local data")
+        texts.append(decoded)
     leak = "a local_only value appears in an outgoing request"
+    ops = _RUN_OP_BUDGET
     for text in texts:
         text = _norm(text)
-        for tok in _TOKEN_SPLIT.findall(text):
-            if len(tok) < _MIN_LEAK_LEN:
-                continue
-            if tok in fast:
-                _bad(leak)
-            if "/" in tok:
+        tokens = _tokens(text)
+        if not tokens.isdisjoint(exact):
+            _bad(leak)
+        for key in tokens.intersection(anchored):
+            for n, interior in anchored[key]:
+                if all(r in tokens for r in interior) and n in text:
+                    _bad(leak)
+        for tok in [t for t in tokens if "/" in t]:
+            if ops > 0:
                 comps = tok.split("/")
                 k = len(comps)
                 for i in range(k):
-                    for j in range(i + 1, min(k, i + _MAX_RUN_COMPONENTS) + 1):
+                    for j in range(i + 1, min(k, i + _RUN_WINDOW) + 1):
+                        ops -= 1
                         run = "/".join(comps[i:j])
-                        if len(run) >= _MIN_LEAK_LEN and run in fast:
+                        if len(run) >= _MIN_LEAK_LEN and run in exact:
                             _bad(leak)
-        for n in slow:
+                    if ops <= 0:
+                        break
+        for n in find_list:
             if n in text:
                 _bad(leak)
 
@@ -425,10 +524,18 @@ def _root_name(root) -> str:
     return text.rsplit("/", 1)[-1] if text else ""
 
 
+def _copy(obj):
+    """Deep copy of JSON-shaped data (much faster than copy.deepcopy)."""
+    try:
+        return json.loads(json.dumps(obj, ensure_ascii=False))
+    except (TypeError, ValueError):
+        raise ApprovalError("plan_invalid", "plan inputs must be JSON data") from None
+
+
 def build_plan(backend: str, tier: str, root: str, requests: list, followups: list,
                disclosure: list, cost: dict, excluded: list, local_only: dict) -> dict:
     reqs = []
-    for r in copy.deepcopy(list(requests)):
+    for r in _copy(list(requests)):
         if isinstance(r, dict):
             r.setdefault("body", None)
             r.setdefault("purpose", "")
@@ -441,11 +548,11 @@ def build_plan(backend: str, tier: str, root: str, requests: list, followups: li
         "tier": tier,
         "root": _root_name(root),
         "requests": reqs,
-        "followups": copy.deepcopy(list(followups)),
+        "followups": _copy(list(followups)),
         "disclosure": list(disclosure),
-        "cost": copy.deepcopy(cost),
-        "excluded": copy.deepcopy(list(excluded)),
-        "local_only": copy.deepcopy(local_only),
+        "cost": _copy(cost),
+        "excluded": _copy(list(excluded)),
+        "local_only": _copy(local_only),
     }
     validate_plan(plan)
     _check_containment(plan)

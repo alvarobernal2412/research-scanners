@@ -103,7 +103,7 @@ def test_time_budgets_realistic_plan(capsys):
     with capsys.disabled():
         print("\nTIMINGS", {k: round(v, 2) for k, v in timings.items()})
     for name, secs in timings.items():
-        assert secs < 2, (name, secs)
+        assert secs < 5, (name, secs)   # generous: scaling is asserted in test_gate_round2
 
 
 def test_containment_not_rerun_by_guard_or_load(tmp_path, monkeypatch):
@@ -132,7 +132,7 @@ def test_containment_catches_basename_key_and_percent_encoded():
 
 
 def test_containment_hash_kind_exempt():
-    lo = {"hashes": {"kind": "hash", "values": ["0123456789abcdef0123456789abcdef"]}, "map": {"1.js": "src/a.js"}}
+    lo = {"h0": {"kind": "hash", "value": "0123456789abcdef0123456789abcdef"}, "map": {"1.js": "src/a.js"}}
     plan = make(local_only=lo, requests=[dict(R2, body="file=0123456789abcdef0123456789abcdef,0,1.js\n")],
                 followups=[])
     assert plan["local_only"] == lo

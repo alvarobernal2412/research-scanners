@@ -6,7 +6,7 @@ header values are read from the environment at send time and never logged.
 """
 from __future__ import annotations
 
-import gzip
+import http.client
 import os
 import sys
 import time
@@ -27,6 +27,9 @@ MAX_RETRY_AFTER = 30
 DEFAULT_RETRY_AFTER = 1
 TIMEOUT_SECONDS = 30
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_GZIP_MEMBERS = 64
+DECODE_DEADLINE_SECONDS = 5
+_clock = time.monotonic
 
 
 @dataclass
@@ -61,10 +64,19 @@ def build_default_opener():
     return director
 
 
+def _env(var: str):
+    return os.environ.get(var)
+
+
+def secret_values() -> list:
+    """Values of the allowlisted secret variables that are set (for redaction in recordings)."""
+    return [v for v in (_env(name) for name in sorted(SECRET_VARS)) if v]
+
+
 def _secret_value(var: str) -> str:
     if var not in SECRET_VARS:
         raise NetError("secret_invalid", f"{var} is not an allowed secret variable")
-    value = os.environ.get(var)
+    value = _env(var)
     if not value:
         raise NetError("secret_missing", f"environment variable {var} is not set")
     if any(ord(c) < 32 or ord(c) == 127 for c in value):
@@ -81,20 +93,30 @@ def _wire_url(url: str) -> str:
 
 
 def gunzip_bounded(data: bytes) -> bytes:
-    """gunzip with an output cap of MAX_RESPONSE_BYTES (multi-member aware)."""
+    """gunzip with an output cap (MAX_RESPONSE_BYTES), a member cap and a wall-clock deadline.
+
+    Walks the buffer through a memoryview, so a long run of tiny members never copies the whole
+    remainder once per member; the member cap bounds the remaining per-member work."""
     cap = MAX_RESPONSE_BYTES
-    out, total = [], 0
+    deadline = _clock() + DECODE_DEADLINE_SECONDS
+    view = memoryview(data)
+    out, total, pos, members = [], 0, 0, 0
     try:
-        while data:
+        while pos < len(view):
+            members += 1
+            if members > MAX_GZIP_MEMBERS:
+                raise NetError("bad_encoding", "too many gzip members")
+            if _clock() > deadline:
+                raise NetError("decode_timeout", "decompression took too long")
             d = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            chunk = d.decompress(data, cap + 1 - total)
+            chunk = d.decompress(view[pos:], cap + 1 - total)
             total += len(chunk)
             out.append(chunk)
             if total > cap or d.unconsumed_tail:
                 raise NetError("response_too_large", "decompressed response exceeds the size cap")
             if not d.eof:
                 raise NetError("network_error", "truncated gzip body")
-            data = d.unused_data
+            pos = len(view) - len(d.unused_data)
     except zlib.error:
         raise NetError("network_error", "invalid gzip body") from None
     except MemoryError:
@@ -147,13 +169,13 @@ def _once(opener, req) -> Response:
         raw = call(req, timeout=TIMEOUT_SECONDS)
     except urllib.error.HTTPError as exc:
         raw, http_error = exc, exc
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as exc:
         raise NetError("network_error", type(exc).__name__) from None
     try:
         resp = _read_response(raw)
     except NetError:
         raise
-    except (OSError, ValueError, MemoryError):
+    except (OSError, ValueError, MemoryError, http.client.HTTPException):
         if http_error is None:
             raise NetError("network_error", "unreadable response") from None
         resp = Response(http_error.code, {}, b"")
@@ -187,6 +209,7 @@ def send(method: str, url: str, guard: Guard, body: bytes | None = None, headers
                 continue
             guard.record(method, url, body, status=resp.status, attempts=attempts)
             return resp
-    except NetError as exc:
-        guard.record(method, url, body, status=None, attempts=attempts, error=exc.code)
+    except BaseException as exc:
+        code = exc.code if isinstance(exc, NetError) else type(exc).__name__
+        guard.record(method, url, body, status=None, attempts=attempts, error=code)
         raise
