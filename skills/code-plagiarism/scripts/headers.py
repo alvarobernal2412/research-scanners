@@ -62,15 +62,17 @@ class Reference:
     post_id: int | None
 
 
-_SIGS: dict[str, list[re.Pattern]] | None = None
+_SIGS: dict[str, dict[str, list[re.Pattern]]] | None = None
 
 
-def _sigs() -> dict[str, list[re.Pattern]]:
+def _sigs() -> dict[str, dict[str, list[re.Pattern]]]:
+    """{spdx: {"header": [...], "mention": [...]}}; header = full-notice phrases."""
     global _SIGS
     if _SIGS is None:
         raw = json.loads(_SIGNATURES_PATH.read_text(encoding="utf-8"))
-        _SIGS = {k: [re.compile(p, re.IGNORECASE | re.DOTALL) for p in v]
-                 for k, v in raw.items()}
+        _SIGS = {sid: {strength: [re.compile(p, re.IGNORECASE | re.DOTALL) for p in pats]
+                       for strength, pats in groups.items()}
+                 for sid, groups in raw.items()}
     return _SIGS
 
 
@@ -100,20 +102,25 @@ def _normalise(lines: list[str]) -> tuple[str, list[int]]:
     return " ".join(parts), starts
 
 
-def _match_signatures(lines: list[str]) -> list[tuple[str, int, str]]:
+def _match_signatures(lines: list[str]) -> list[tuple[str, int, str, str]]:
+    """(spdx, line, snippet, strength); strength is "header" or "mention"."""
     text, starts = _normalise(lines)
-    found: list[tuple[str, int, str]] = []
-    for sid, pats in _sigs().items():
-        for pat in pats:
-            m = pat.search(text)
-            if not m:
+    found: list[tuple[str, int, str, str]] = []
+    for sid, groups in _sigs().items():
+        for strength in ("header", "mention"):
+            hit = None
+            for pat in groups.get(strength, []):
+                hit = pat.search(text)
+                if hit:
+                    break
+            if not hit:
                 continue
-            idx, snippet = m.start(), m.group(0)[:160]
+            idx, snippet = hit.start(), hit.group(0)[:160]
             if sid == "BSD-2-Clause":  # pattern is anchored at text start
                 idx = max(text.lower().find("redistribution and use"), 0)
                 snippet = text[idx: idx + 160]
             line = bisect.bisect_right(starts, idx)
-            found.append((sid, max(line, 1), snippet))
+            found.append((sid, max(line, 1), snippet, strength))
             break
     return found
 
@@ -134,8 +141,9 @@ def detect_header(lines: list[str]) -> list[LicenseEvidence]:
                 sid, known = canonical_spdx(part[:MAX_SPDX_ID_CHARS])
                 out.append(LicenseEvidence(sid, "spdx_tag", i, ln.strip(), "file_header",
                                            "high" if known else "medium"))
-    for sid, line, snippet in _match_signatures(head):
-        out.append(LicenseEvidence(sid, "license_text", line, snippet, "file_header", "medium"))
+    for sid, line, snippet, strength in _match_signatures(head):
+        out.append(LicenseEvidence(sid, "license_text", line, snippet, "file_header",
+                                   "high" if strength == "header" else "medium"))
     for i, ln in enumerate(head, 1):
         if _COPYRIGHT.search(ln) and not _SPDX_TAG.search(ln):
             out.append(LicenseEvidence(None, "copyright", i, ln.strip(), "file_header", "low"))
@@ -147,7 +155,8 @@ def detect_license_file(text: str) -> LicenseEvidence | None:
     found = _match_signatures(re.split(r"\r\n|\n|\r", text))
     if not found:
         return None
-    sid, line, snippet = found[0]
+    found.sort(key=lambda f: f[3] != "header")  # stable: full notices first
+    sid, line, snippet, _ = found[0]
     return LicenseEvidence(sid, "license_text", line, snippet, "repo_license", "high")
 
 
