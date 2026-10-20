@@ -206,3 +206,72 @@ def test_spdx_tag_apache_beats_repo_mit():
     tag = _ev("Apache-2.0", "spdx_tag", "high")
     repo = _ev("MIT", "license_text", "high", "repo_license")
     assert effective_file_license([tag], [repo]).spdx == "Apache-2.0"
+
+
+GPL2_NOTICE = """\
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+""".splitlines()
+
+HEADER_SAMPLES = {
+    "MIT": "Permission is hereby granted, free of charge, to any person obtaining a copy of this software",
+    "Apache-2.0": "Licensed under the Apache License, Version 2.0 (the \"License\");",
+    "GPL-2.0-only": "under the terms of the GNU General Public License version 2 of the License.",
+    "GPL-2.0-or-later": "GNU General Public License as published by the Free Software Foundation; "
+                        "either version 2 of the License, or (at your option) any later version.",
+    "GPL-3.0-only": "under the terms of the GNU General Public License, version 3 of the License.",
+    "GPL-3.0-or-later": "GNU General Public License as published by the Free Software Foundation, "
+                        "either version 3 of the License, or (at your option) any later version.",
+    "LGPL-2.1": "GNU Lesser General Public License as published by the Free Software Foundation; "
+                "either version 2.1 of the License",
+    "LGPL-3.0": "GNU Lesser General Public License as published by the Free Software Foundation, "
+                "either version 3 of the License",
+    "AGPL-3.0": "GNU Affero General Public License as published by the Free Software Foundation",
+    "BSD-2-Clause": "Redistribution and use in source and binary forms, with or without modification, "
+                    "are permitted provided that the following conditions are met:",
+    "BSD-3-Clause": "Redistribution and use in source and binary forms, with or without modification, "
+                    "are permitted. Neither the name of the copyright holder nor the names",
+    "MPL-2.0": "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.",
+    "ISC": "Permission to use, copy, modify, and/or distribute this software for any purpose "
+           "with or without fee is hereby granted",
+    "Unlicense": "This is free and unencumbered software released into the public domain.",
+    "CC-BY-SA-3.0": "This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 licence",
+    "CC-BY-SA-4.0": "This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 licence",
+    "CC-BY-4.0": "This work is licensed under a Creative Commons Attribution 4.0 International licence",
+    "CC0-1.0": "To the extent possible under law, the person who associated CC0 with this work has waived",
+}
+
+
+def test_signature_strengths_and_header_samples():
+    sigs = json.loads((SKILL / "data/license_signatures.json").read_text(encoding="utf-8"))
+    for sid, groups in sigs.items():
+        assert set(groups) <= {"header", "mention"} and (groups.get("header") or groups.get("mention")), sid
+    header_ids = {sid for sid, g in sigs.items() if g.get("header")}
+    assert header_ids <= set(HEADER_SAMPLES)
+    for sid in header_ids:
+        ev = [e for e in detect_header(["# " + HEADER_SAMPLES[sid]]) if e.spdx == sid]
+        assert ev and ev[0].confidence == "high" and ev[0].source == "file_header", sid
+
+
+def test_full_gpl_notice_beats_repo_mit():
+    ev = detect_header(GPL2_NOTICE)
+    gpl = [e for e in ev if e.kind == "license_text"]
+    assert [(e.spdx, e.confidence, e.source) for e in gpl] == [("GPL-2.0-or-later", "high", "file_header")]
+    repo = _ev("MIT", "license_text", "high", "repo_license")
+    eff = effective_file_license(ev, [repo])
+    assert (eff.spdx, eff.confidence) == ("GPL-2.0-or-later", "high")
+
+
+def test_full_mit_notice_is_high():
+    ev = detect_header(["/*", " * Permission is hereby granted, free of charge, to any person obtaining a copy", " */"])
+    assert [(e.spdx, e.confidence) for e in ev if e.kind == "license_text"] == [("MIT", "high")]
+
+
+def test_bare_mentions_stay_medium_and_do_not_displace_repo():
+    repo = _ev("Apache-2.0", "license_text", "high", "repo_license")
+    for line in ("# MIT License", "# see the MIT license file"):
+        ev = detect_header([line])
+        assert [(e.spdx, e.confidence) for e in ev] == [("MIT", "medium")], line
+        assert effective_file_license(ev, [repo]).spdx == "Apache-2.0"
