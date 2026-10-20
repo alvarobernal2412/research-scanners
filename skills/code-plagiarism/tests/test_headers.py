@@ -154,3 +154,55 @@ def test_signatures_cover_required_ids():
             "BSD-3-Clause", "MPL-2.0", "ISC", "Unlicense", "CC-BY-SA-3.0", "CC-BY-SA-4.0",
             "CC-BY-4.0", "CC0-1.0"}
     assert need <= set(sigs)
+
+
+def _timed(fn, budget=2.0):
+    import time
+    t = time.perf_counter()
+    fn()
+    assert time.perf_counter() - t < budget
+
+
+def test_redos_whitespace_run_in_spdx_tag():
+    _timed(lambda: detect_header(["# SPDX-License-Identifier:" + " " * 200_000 + "x"]))
+
+
+def test_redos_whitespace_run_old_pattern_size():
+    _timed(lambda: headers._SPDX_TAG.search("SPDX-License-Identifier:" + " " * 20_000 + "x"))
+
+
+def test_many_token_spdx_value_is_fast():
+    _timed(lambda: detect_header(["// SPDX-License-Identifier: " + "a " * 100_000]))
+
+
+def test_five_mb_single_line_is_fast():
+    line = "// Copyright " + "a" * (5 * 1024 * 1024)
+    _timed(lambda: detect_header([line, line]))
+
+
+def test_long_spdx_id_truncated():
+    ev = detect_header(["# SPDX-License-Identifier: " + "Z" * 900])
+    assert len(ev[0].spdx) <= 160
+
+
+def _ev(spdx, kind, conf, source="file_header"):
+    return headers.LicenseEvidence(spdx, kind, 1, "t", source, conf)
+
+
+def test_medium_prose_does_not_displace_repo_licence():
+    repo = _ev("MIT", "license_text", "high", "repo_license")
+    for prose in (_ev("MIT", "license_text", "medium"), _ev("Apache-2.0", "license_text", "medium"),
+                  _ev("Zlib", "spdx_tag", "medium")):
+        eff = effective_file_license([prose], [repo])
+        assert (eff.spdx, eff.source, eff.confidence) == ("MIT", "repo_license", "high")
+
+
+def test_medium_prose_used_when_no_repo_licence():
+    prose = _ev("Apache-2.0", "license_text", "medium")
+    assert effective_file_license([prose], []) is prose
+
+
+def test_spdx_tag_apache_beats_repo_mit():
+    tag = _ev("Apache-2.0", "spdx_tag", "high")
+    repo = _ev("MIT", "license_text", "high", "repo_license")
+    assert effective_file_license([tag], [repo]).spdx == "Apache-2.0"
