@@ -517,29 +517,79 @@ def _parse_yarnrc_classic(lines):
         s = line.strip()
         if not s or s[0] == "#":
             continue
-        m = re.match(r"[\"']?(@[A-Za-z0-9][A-Za-z0-9._~-]*):registry[\"']?\s+(\S+)", s, re.I)
+        # the value may be missing (empty): then it is not a public registry
+        m = re.match(r"[\"']?(@[A-Za-z0-9][A-Za-z0-9._~-]*):registry[\"']?(?:\s+(\S*)|\s*$)", s, re.I)
         if m:
-            if not _public(m.group(2), PUBLIC_NPM_HOSTS):
+            if not _public(m.group(2) or "", PUBLIC_NPM_HOSTS):
                 scopes.add(m.group(1).lower())
             continue
-        m = re.match(r"[\"']?registry[\"']?\s+(\S+)", s, re.I)
-        if m and not _public(m.group(1), PUBLIC_NPM_HOSTS):
+        m = re.match(r"[\"']?registry[\"']?(?:\s+(\S*)|\s*$)", s, re.I)
+        if m and not _public(m.group(1) or "", PUBLIC_NPM_HOSTS):
             default = True
     return default, scopes
 
 
-def _parse_pip_conf(lines, state):
+_INI_SECTION = re.compile(r"\[([^\]]*)\]")
+_INI_OPTION = re.compile(r"([^=:\s][^=:]*?)\s*[=:](.*)$")
+_INI_INLINE_COMMENT = re.compile(r"(?:^|\s)[#;].*$")
+# setup.cfg sections whose keys are user data (names of extras, entry points, files), never options
+_SETUP_CFG_DATA_SECTIONS = frozenset({"metadata", "options.extras_require", "options.entry_points",
+                                      "options.package_data", "options.exclude_package_data",
+                                      "options.data_files"})
+
+
+def _ini_values(lines, keys, skip_sections=frozenset()):
+    """Yield (key, [value tokens]) for each option in `keys` (lower case, `_` -> `-`) of an INI file.
+
+    Follows configparser: an indented line after an option continues its value; blank lines and
+    full-line `#`/`;` comments inside a value are skipped; a section header or unindented line ends
+    it. Inline ` #`/` ;` comments are dropped. An empty value gives an empty token list (the caller
+    treats that as non-public). Options in `skip_sections` (lower case) are ignored. Linear time.
+    """
+    section, cur, tokens = None, None, None             # cur: matched key, "" for another option, None
     for line in lines:
-        m = re.match(r"\s*index[-_]url\s*[=:]\s*(\S+)", line, re.I)
-        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
-            state["index_private"] = True
-        m = re.match(r"\s*extra[-_]index[-_]url\s*[=:]\s*(\S+)", line, re.I)
-        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
-            state["extra"] = True
-        if re.match(r"\s*find[-_]links\s*[=:]", line, re.I):
-            state["extra"] = True
-        m = re.match(r"\s*trusted[-_]host\s*[=:]\s*(\S+)", line, re.I)
-        if m and _bare_host(m.group(1)) not in PUBLIC_PY_HOSTS:
+        s = line.strip()
+        if not s or s[0] in "#;":
+            continue
+        if line[0].isspace() and cur is not None:
+            if tokens is not None:
+                tokens.extend(_INI_INLINE_COMMENT.sub("", s).split())
+            continue
+        if cur:
+            yield cur, tokens
+        cur, tokens = None, None
+        m = _INI_SECTION.match(s)
+        if m and not line[0].isspace():
+            section = m.group(1).strip().lower()
+            continue
+        m = _INI_OPTION.match(s)
+        if not m:
+            continue
+        key = m.group(1).strip().lower().replace("_", "-")
+        if key in keys and section not in skip_sections:
+            cur, tokens = key, _INI_INLINE_COMMENT.sub("", m.group(2).strip()).split()
+        else:
+            cur = ""
+    if cur:
+        yield cur, tokens
+
+
+def _all_public(tokens, hosts) -> bool:
+    return bool(tokens) and all(_public(t, hosts) for t in tokens)
+
+
+def _parse_pip_conf(lines, state):
+    """pip.conf / pip.ini, every section (they are all pip command sections); continuation lines followed."""
+    for key, tokens in _ini_values(lines, {"index-url", "extra-index-url", "find-links", "trusted-host"}):
+        if key == "index-url":
+            if not tokens:
+                state["extra"] = True                      # empty here: the value may come from elsewhere
+            elif not _all_public(tokens, PUBLIC_PY_HOSTS):
+                state["index_private"] = True
+        elif key == "trusted-host":
+            if not tokens or any(_bare_host(t) not in PUBLIC_PY_HOSTS for t in tokens):
+                state["extra"] = True
+        elif key == "find-links" or not _all_public(tokens, PUBLIC_PY_HOSTS):
             state["extra"] = True
 
 
@@ -568,10 +618,9 @@ def _parse_uv_toml(data, state):
 
 
 def _parse_setup_cfg(lines, state):
-    """Only index URL keys are looked at (never credentials as such)."""
-    for line in lines:
-        m = re.match(r"\s*(?:index[-_]url|find[-_]links)\s*[=:]\s*(\S+)", line, re.I)
-        if m and not _public(m.group(1), PUBLIC_PY_HOSTS):
+    """Only index URL keys are looked at (never credentials as such); data-only sections are skipped."""
+    for _key, tokens in _ini_values(lines, {"index-url", "find-links"}, _SETUP_CFG_DATA_SECTIONS):
+        if not _all_public(tokens, PUBLIC_PY_HOSTS):
             state["extra"] = True
 
 
