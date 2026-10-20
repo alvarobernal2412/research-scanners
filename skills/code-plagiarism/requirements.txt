@@ -1,1 +1,3 @@
 pytest
+# optional, only for the fingerprint tier (SCANOSS client, MIT); tested range
+scanoss>=1.54,<1.55

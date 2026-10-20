@@ -54,13 +54,16 @@ def fake_wfp(stage, crlf=False, extra=None, size_zero=False):
 class FakeRunner:
     """Dispatches on argv[1]: `fingerprint` writes a WFP from the staged dir, `scan` answers from a replay."""
 
-    def __init__(self, scan=None, crlf=False, extra=None, fp_rc=0, fp_text=None):
+    def __init__(self, scan=None, crlf=False, extra=None, fp_rc=0, fp_text=None, version="Version: 1.54.2\n"):
         self.scan, self.crlf, self.extra, self.fp_rc, self.fp_text = scan, crlf, extra, fp_rc, fp_text
+        self.version = version
         self.calls = []
         self.fp_dirs = []
 
     def __call__(self, argv, env, cwd):
         self.calls.append({"argv": list(argv), "env": dict(env or {}), "cwd": str(cwd)})
+        if argv[1] == "--version":
+            return 0, self.version, ""
         if argv[1] == "fingerprint":
             stage = Path(argv[2])
             self.fp_dirs.append(stage)
@@ -91,7 +94,10 @@ def write(tmp_path, plan, name="plan.json"):
 
 def test_not_installed_error(tmp_path, monkeypatch, capsys):
     project(tmp_path)
-    monkeypatch.setattr(shutil, "which", lambda *a, **k: None)
+    empty = tmp_path / "emptybin"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    monkeypatch.delenv("SCANOSS_PY", raising=False)
     rc = sb.main(["plan", str(tmp_path / "proj"), "--include", "src", "--out", str(tmp_path / "p.json")])
     out = json.loads(capsys.readouterr().out)
     assert rc == 2 and out["error"] == "scanoss_not_installed"
@@ -326,7 +332,7 @@ def test_fingerprint_child_gets_sanitised_env_and_temp_cwd(tmp_path, monkeypatch
     monkeypatch.setenv("MY_SECRET_THING", "s")
     fr = FakeRunner()
     plan_for(tmp_path, runner=fr)
-    c = fr.calls[0]
+    c = next(x for x in fr.calls if x["argv"][1] == "fingerprint")
     assert "SCANOSS_API_KEY" not in c["env"] and "MY_SECRET_THING" not in c["env"]
     assert Path(c["cwd"]).resolve() != (tmp_path / "proj").resolve()
     assert str(tmp_path / "proj") not in " ".join(c["argv"])
@@ -348,7 +354,7 @@ def test_preview_shows_wfp_and_disclosure(tmp_path):
 
 def test_disclosure_is_exact():
     d = sb.DISCLOSURE
-    assert len(d) == 5
+    assert len(d) == 6
     assert d[0].startswith("This uploads one fingerprint file (WFP) to the Software Transparency Foundation's "
                            "free SCANOSS service at api.osskb.org, which may log usage to monitor service load; "
                            "no retention period is published.")
@@ -358,6 +364,10 @@ def test_disclosure_is_exact():
     assert d[4].startswith("Free-tier limits: 5000 files/day, 7500/week, 15000/month. This plan uses N files. "
                            "The service's terms allow software identification only.")
     assert '"designed for professional use only and not offered for end-consumer use"' in d[4]
+    assert d[5].startswith("The client uploads the fingerprint file in several smaller POST requests (about one "
+                           "per 32 files or 32 KB), each with its own random request id, plus the headers "
+                           "user-agent scanoss-py/<version>, x-scanoss-client (tool, version, build date), and a "
+                           "form field format=plain; N requests are expected for this plan.")
 
 
 # ---- run ---------------------------------------------------------------------------------
@@ -494,7 +504,12 @@ def test_cli_failure_becomes_coverage_error(tmp_path, capsys):
 
     res2 = sb.run(path, plan["sha256"], runner=FakeRunner(scan=lambda *a: (3, "", "something odd")))
     assert res2["errors"][0]["code"] == "backend_failed" and res2["matches"] == []
-    assert res2["not_sent"] and res2["not_sent"][0]["id"] == plan["requests"][0]["id"]
+    # the child had started: the service may have received data, so it is possibly_sent, never not_sent
+    assert res2["not_sent"] == []
+    (sent,) = res2["requests_sent"]
+    assert sent["status"] == "possibly_sent" and sent["method"] == "POST" and sent["url"] == sb.ENDPOINT
+    assert "may have reached" in sent["note"]
+    assert res["requests_sent"][0]["status"] == "possibly_sent" and res["not_sent"] == []
 
 
 def test_stderr_is_scrubbed_of_absolute_paths(tmp_path):

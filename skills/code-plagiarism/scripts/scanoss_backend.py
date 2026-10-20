@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -54,6 +55,21 @@ MAX_EXCLUDED_LISTED = 1000
 MAX_ENTRIES_PER_FILE = 20
 MAX_RANGES = 20
 FREE_TIER_DAILY = 5000
+MAX_DROPPED = 1000
+MAX_RESULTS_BYTES = 16 * 1024 * 1024
+MAX_STRING = 500
+TESTED_CLIENT = (1, 54)                 # wire analysis (what is uploaded) was done for scanoss-py 1.54.x
+# The real client uploads the WFP in ~1 POST per POST_FILES files / POST_BYTES bytes, on UPLOAD_THREADS threads,
+# measured at SECONDS_PER_POST (spike section 1.6). Scan time budget:
+#   min(SCAN_MAX, SCAN_BASE + SECONDS_PER_POST * posts / UPLOAD_THREADS * SAFETY)
+POST_BYTES = 32768
+POST_FILES = 32
+UPLOAD_THREADS = 5
+SECONDS_PER_POST = 6.6
+SAFETY = 1.5
+SCAN_BASE = 60
+SCAN_MAX = 900
+MAX_EXPECTED_POSTS = 120
 
 DISCLOSURE = [
     "This uploads one fingerprint file (WFP) to the Software Transparency Foundation's free SCANOSS service "
@@ -69,6 +85,9 @@ DISCLOSURE = [
     "allow software identification only. The service describes itself as \"designed for professional use only "
     "and not offered for end-consumer use\" and limits OSSKB output to software identification (Software "
     "Transparency Foundation terms, https://www.softwaretransparency.org/terms).",
+    "The client uploads the fingerprint file in several smaller POST requests (about one per 32 files or 32 KB), "
+    "each with its own random request id, plus the headers user-agent scanoss-py/<version>, x-scanoss-client "
+    "(tool, version, build date), and a form field format=plain; N requests are expected for this plan.",
 ]
 
 _NOT_INSTALLED = "pip install scanoss (MIT); then re-run plan"
@@ -88,11 +107,12 @@ class ScanossError(Exception):
 
 # ---- WFP sanitiser / parser ------------------------------------------------------------------
 
-_FILE_LINE = re.compile(r"file=([0-9A-Za-z]{1,64}),(\d{1,12}),(\d{1,6}\.[A-Za-z0-9]{1,16})")
-_FH2_LINE = re.compile(r"fh2=([0-9A-Fa-f]{1,64})")
-_SNIP_LINE = re.compile(r"(\d{1,9})=([0-9a-f]{8}(?:,[0-9a-f]{8})*)")
-_STRICT_MD5 = re.compile(r"[0-9A-Fa-f]{32}")
-_NEUTRAL = re.compile(r"\d{1,6}\.[A-Za-z0-9]{1,16}")
+_A = re.ASCII
+_FILE_LINE = re.compile(r"file=([0-9A-Za-z]{1,64}),([0-9]{1,12}),([0-9]{1,6}\.[a-z0-9]{1,16})", _A)
+_FH2_LINE = re.compile(r"fh2=([0-9A-Fa-f]{1,64})", _A)
+_SNIP_LINE = re.compile(r"([0-9]{1,9})=([0-9a-f]{8}(?:,[0-9a-f]{8})*)", _A)
+_STRICT_MD5 = re.compile(r"[0-9A-Fa-f]{32}", _A)
+_NEUTRAL = re.compile(r"[0-9]{1,6}\.[A-Za-z0-9]{1,16}", _A)
 
 
 def _wfp_text(wfp) -> str:
@@ -163,39 +183,100 @@ def describe_wfp(wfp: str) -> list[dict]:
 
 # ---- child process -----------------------------------------------------------------------------
 
-_SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH", re.I)
+_SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|COOKIE|SESSION|DSN", re.I)
 
 
-def find_cli() -> str | None:
-    return shutil.which("scanoss-py")
+def _inside(path, root) -> bool:
+    try:
+        Path(os.path.normcase(os.path.realpath(path))).relative_to(Path(os.path.normcase(os.path.realpath(root))))
+        return True
+    except ValueError:
+        return False
+
+
+def _usable_cli(candidate, root) -> str | None:
+    """An absolute, existing, executable file that is not the cwd, the scan root or inside either."""
+    cand = str(candidate)
+    if not cand or not os.path.isabs(cand):
+        return None
+    try:
+        real = os.path.realpath(cand)
+        if not os.path.isfile(real) or (os.name != "nt" and not os.access(real, os.X_OK)):
+            return None
+        forbidden = [os.getcwd()] + ([str(root)] if root is not None else [])
+        if any(_inside(cand, f) or _inside(real, f) for f in forbidden):
+            return None
+    except OSError:
+        return None
+    return real
+
+
+def find_cli(root=None) -> str | None:
+    """Locate scanoss-py by walking PATH ourselves. shutil.which also searches the current directory first on
+    Windows, which would run a binary planted in the scanned repository with the staged copies of its files.
+    Empty, '.' and relative PATH entries, the cwd and the scan root are skipped; only an absolute existing file
+    is returned (symlinks resolved). SCANOSS_PY may name the CLI, with the same rules."""
+    override = os.environ.get("SCANOSS_PY")
+    if override:
+        return _usable_cli(override, root)
+    exts = [""]
+    if os.name == "nt":
+        exts = [e.lower() for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e] or [".exe"]
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        entry = entry.strip().strip('"')
+        if not entry or entry == "." or not os.path.isabs(entry):
+            continue
+        for ext in exts:
+            found = _usable_cli(os.path.join(entry, "scanoss-py" + ext), root)
+            if found:
+                return found
+    return None
 
 
 def child_env(environ=None) -> dict:
-    """The user's environment minus anything that looks like a secret and every SCANOSS_* variable.
-    Proxy variables are kept so the CLI works behind a proxy."""
+    """The user's environment minus anything that looks like a secret (case-insensitive) and every SCANOSS_*
+    variable. Proxy variables are kept so the CLI works behind a proxy. The Windows current-directory lookup
+    of executables is switched off for the child."""
     env = {}
     for name, value in dict(os.environ if environ is None else environ).items():
         if _SECRETISH.search(name) or name.upper().startswith("SCANOSS"):
             continue
         env[name] = value
+    env["NoDefaultCurrentDirectoryInExePath"] = "1"
     return env
 
 
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-_]")
+_CTRL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _ABS_PATH = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s'\"<>|]*"            # C:\Users\...  C:/...
-    r"|\\\\[^\s'\"]+"                                          # \\server\share
-    r"|~[\\/][^\s'\"]*"                                        # ~/...
-    r"|(?<![\w:/.~-])/(?:[\w.@+~-]+/)+[\w.@+~-]*")             # /home/x/y (not the path part of a URL)
+    r"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\r\n'\"<>|]*"            # C:\Users\Name With Space\...  (to end of line/quote)
+    r"|\\\\[^\r\n'\"<>|]+"                                      # \\server\share name\...
+    r"|file:/+[^\r\n'\"<>|]*"                                   # file:///...
+    r"|~[\\/][^\r\n'\"<>|]*"                                    # ~/...
+    r"|(?<![\w:/.~-])/(?:home|Users|root|tmp|var|mnt|opt|usr|etc|private|Volumes|srv|workspace|data)/[^\r\n'\"<>|]*"
+    r"|(?<![\w:/.~-])/(?:[\w.@+~-]+/)+[\w.@+~-]*")             # other /a/b/c (not the path part of a URL)
+_USERINFO = re.compile(r"(\b[A-Za-z][A-Za-z0-9+.-]*://)[^\s/@'\"]+@")
+_SECRET_HEADER = re.compile(
+    r"\b(authorization|proxy-authorization|x-[\w-]*(?:key|token|secret|auth)[\w-]*|api[-_]?key|cookie)"
+    r"(\s*[:=]\s*)[^\r\n'\"]*", re.I)
+_BEARER = re.compile(r"\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]+", re.I)
+_SECRET_PARAM = re.compile(
+    r"\b((?:access[_-]?|api[_-]?|auth[_-]?)?(?:token|key|secret|password|passwd|pwd))=[^\s&'\"]+", re.I)
 
 
 def scrub(text, extra=()) -> str:
-    """Remove absolute local paths from child output before it is stored."""
+    """Remove absolute local paths and credentials from child output before it is stored."""
     text = text if isinstance(text, str) else ""
+    text = _ANSI.sub("", text)
+    text = _USERINFO.sub(lambda m: m.group(1) + "<redacted>@", text)
+    text = _SECRET_HEADER.sub(lambda m: f"{m.group(1)}{m.group(2)}<redacted>", text)
+    text = _BEARER.sub(lambda m: f"{m.group(1)} <redacted>", text)
+    text = _SECRET_PARAM.sub(lambda m: f"{m.group(1)}=<redacted>", text)
     for known in sorted({str(x) for x in (*extra, os.path.expanduser("~"), os.getcwd()) if x}, key=len,
                         reverse=True):
         if len(known) > 3:
             for form in {known, known.replace("\\", "/"), known.replace("/", "\\")}:
-                text = re.sub(re.escape(form) + r"[^\s'\"<>|]*", "<path>", text, flags=re.I)
+                text = re.sub(re.escape(form) + r"[^\r\n'\"<>|]*", "<path>", text, flags=re.I)
     return _ABS_PATH.sub("<path>", text)
 
 
@@ -208,38 +289,90 @@ def _kill_tree(proc) -> None:
         pass
 
 
+def _oversized(cwd: Path) -> bool:
+    try:
+        entries = list(os.scandir(cwd))
+    except OSError:
+        return False
+    for entry in entries:
+        try:
+            # os.stat, not DirEntry.stat: on Windows the directory entry's size is stale while a file is written
+            if entry.is_file(follow_symlinks=False) and os.stat(entry.path).st_size > MAX_OUTPUT_BYTES:
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def make_runner(total: float = TOTAL_TIMEOUT, per_call: float = CALL_TIMEOUT):
-    """runner(argv, env, cwd) -> (rc, stdout, stderr) with a per-call and a total time budget and
-    size-capped output (captured through files in cwd, read back at most MAX_OUTPUT_BYTES)."""
+    """runner(argv, env, cwd) -> (rc, stdout, stderr) with a per-call and a total time budget. argv[0] must be
+    an absolute path (no PATH or cwd lookup, shell=False). While the process runs, any file in cwd (including
+    the captured stdout/stderr) that grows beyond MAX_OUTPUT_BYTES gets the process tree killed (rc 125)."""
     start = time.monotonic()
     counter = [0]
 
     def runner(argv, env, cwd):
+        if not argv or not os.path.isabs(str(argv[0])):
+            return 127, "", "refusing to run a command that is not an absolute path"
         remaining = total - (time.monotonic() - start)
         if remaining <= 0:
             return 124, "", "total time budget exhausted"
         limit = min(per_call, remaining)
         counter[0] += 1
         out_p, err_p = Path(cwd) / f".stdout{counter[0]}", Path(cwd) / f".stderr{counter[0]}"
+        note = ""
         with open(out_p, "wb") as fo, open(err_p, "wb") as fe:
             try:
-                proc = subprocess.Popen(list(argv), env=env, cwd=cwd, stdin=subprocess.DEVNULL,
-                                        stdout=fo, stderr=fe)
+                proc = subprocess.Popen([str(a) for a in argv], env=env, cwd=cwd, stdin=subprocess.DEVNULL,
+                                        stdout=fo, stderr=fe, shell=False)
             except OSError as exc:
                 return 127, "", f"cannot start the command: {type(exc).__name__}"
-            try:
-                rc = proc.wait(timeout=limit)
-            except subprocess.TimeoutExpired:
-                _kill_tree(proc)
-                proc.wait()
-                rc = 124
-                fe.write(f"\ntimeout after {limit:.0f}s".encode())
+            deadline = time.monotonic() + limit
+            rc = None
+            while rc is None:
+                try:
+                    rc = proc.wait(timeout=min(0.1, max(deadline - time.monotonic(), 0.001)))
+                except subprocess.TimeoutExpired:
+                    if _oversized(Path(cwd)):
+                        rc, note = 125, "\noutput exceeded the size limit; the process was stopped"
+                    elif time.monotonic() >= deadline:
+                        rc, note = 124, f"\ntimeout after {limit:.0f}s"
+                    else:
+                        continue
+                    _kill_tree(proc)
+                    proc.wait()
+
         def tail(p):
             with open(p, "rb") as fh:
                 return fh.read(MAX_OUTPUT_BYTES).decode("utf-8", "replace")
-        return rc, tail(out_p), tail(err_p)
+        return rc, tail(out_p), tail(err_p) + note
 
     return runner
+
+
+def expected_posts(wfp: str, n_files: int) -> int:
+    """How many POST requests the client makes: about one per POST_FILES files or POST_BYTES bytes."""
+    return max(1, math.ceil(max(len(wfp) / POST_BYTES, n_files / POST_FILES)))
+
+
+def scan_timeout(posts: int) -> float:
+    return min(SCAN_MAX, SCAN_BASE + SECONDS_PER_POST * posts / UPLOAD_THREADS * SAFETY)
+
+
+def _client_version(cli: str, runner):
+    tmp = Path(tempfile.mkdtemp(prefix="scanoss-ver-"))
+    try:
+        rc, so, se = runner([cli, "--version"], child_env(), str(tmp))
+    except Exception:
+        return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    m = re.search(r"\b([0-9]{1,4})\.([0-9]{1,4})\.([0-9]{1,4})\b", ((so or "") + " " + (se or ""))[:500], re.A)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if rc == 0 and m else None
+
+
+def _clean(value, limit=MAX_STRING) -> str:
+    return _CTRL.sub("", _ANSI.sub("", value))[:limit]
 
 
 # ---- staging --------------------------------------------------------------------------------------
@@ -270,7 +403,10 @@ def _checked_bytes(path: Path, root: Path | None = None, rel: str | None = None)
             want = os.path.normcase(os.path.join(os.path.realpath(root), *rel.split("/")))
             if real != want:
                 raise _Reject("symlink")
-        if path.stat().st_size > MAX_FILE_BYTES:
+        st = path.stat()
+        if st.st_nlink > 1:                  # a hard link may alias a file outside the scan root
+            raise _Reject("hardlink")
+        if st.st_size > MAX_FILE_BYTES:
             raise _Reject("too_large")
         data = path.read_bytes()
     except OSError:
@@ -363,6 +499,10 @@ def _fingerprint(files: list[SourceFile], runner, cli: str):
         names = [d["id"] for d in described]
         if not names:
             raise ScanossError("nothing_to_fingerprint", "the fingerprint tool produced no file entries")
+        posts = expected_posts(body, len(names))
+        if posts > MAX_EXPECTED_POSTS:
+            raise ScanossError("plan_too_large", f"the upload would need about {posts} requests (limit "
+                                                 f"{MAX_EXPECTED_POSTS}); reduce --include or --max-files")
         if any(n not in id_map for n in names):
             raise ScanossError("unsanitised_wfp", "the WFP names a file that was not staged")
         return body, {n: id_map[n] for n in names}, {n: rel for n, rel in id_map.items() if n not in names}
@@ -370,20 +510,29 @@ def _fingerprint(files: list[SourceFile], runner, cli: str):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def make_plan(root: Path, includes: list[str], runner=None, max_files: int = SCANOSS_MAX_FILES) -> dict:
+def make_plan(root: Path, includes: list[str], runner=None, max_files: int = SCANOSS_MAX_FILES,
+              allow_untested: bool = False) -> dict:
     if runner is None:
-        cli = find_cli()
+        cli = find_cli(root)
         if cli is None:
             raise ScanossError("scanoss_not_installed", _NOT_INSTALLED)
         runner = make_runner()
     else:
-        cli = find_cli() or "scanoss-py"
+        cli = find_cli(root) or "scanoss-py"
     if not includes:
         raise ScanossError("include_required", "choose the files to fingerprint with --include <path> [...]")
     if not isinstance(max_files, int) or isinstance(max_files, bool) or max_files < 1:
         raise ScanossError("max_files_invalid", "--max-files must be a positive integer")
     if max_files > HARD_MAX_FILES:
         raise ScanossError("max_files_too_large", f"--max-files cannot exceed {HARD_MAX_FILES}")
+    version = _client_version(cli, runner)
+    tested = version is not None and version[:2] == TESTED_CLIENT
+    if not tested and not allow_untested:
+        seen = ".".join(map(str, version)) if version else "unknown"
+        raise ScanossError("scanoss_version_untested",
+                           f"scanoss-py {seen} is outside the tested range {TESTED_CLIENT[0]}.{TESTED_CLIENT[1]}.x "
+                           "(the review of what it uploads was done for that range); install a tested version "
+                           "(pip install 'scanoss>=1.54,<1.55') or pass --allow-untested-client")
     inv = inventory(Path(root))
     chosen = resolve_includes(inv, list(includes))
     prefixes = _prefixes(inv, includes)
@@ -416,7 +565,7 @@ def make_plan(root: Path, includes: list[str], runner=None, max_files: int = SCA
         for name, rel in id_map.items():
             sf = next(s for s in eligible if s.rel == rel)
             counts[name] = len(read_lines(sf.path))
-        plan = _assemble(inv, body, id_map, counts, excluded)
+        plan = _assemble(inv, body, id_map, counts, excluded, version, tested)
         if isinstance(plan, dict):
             return plan
         bad = _find_colliders(body, id_map)                       # plan is the ApprovalError
@@ -427,15 +576,23 @@ def make_plan(root: Path, includes: list[str], runner=None, max_files: int = SCA
     raise ScanossError("plan_invalid", "file names collide with the request text")
 
 
-def _assemble(inv, body: str, id_map: dict, line_counts: dict, excluded: list):
+def _assemble(inv, body: str, id_map: dict, line_counts: dict, excluded: list, version=None, tested=True):
     reasons = Counter(why for _rel, why in excluded)
     listed = [{"rel": rel if _displayable(rel) else "(bad name)", "reason": why}
               for rel, why in sorted(excluded)][:MAX_EXCLUDED_LISTED]
     if len(excluded) > MAX_EXCLUDED_LISTED:
         listed.append({"rel": f"({len(excluded) - MAX_EXCLUDED_LISTED} more files)", "reason": "truncated_list"})
     n = len(id_map)
-    disclosure = DISCLOSURE + [f"In this plan N is {n} file{'s' if n != 1 else ''} "
-                               f"({n} of {FREE_TIER_DAILY} files/day)."]
+    posts = expected_posts(body, n)
+    seen = ".".join(map(str, version)) if version else "unknown"
+    disclosure = DISCLOSURE + [
+        f"In this plan N is {n} file{'s' if n != 1 else ''}, {posts} expected upload request"
+        f"{'s' if posts != 1 else ''} ({n} of {FREE_TIER_DAILY} files/day).",
+        f"Client: scanoss-py {seen}. What the client uploads was analysed for scanoss-py "
+        f"{TESTED_CLIENT[0]}.{TESTED_CLIENT[1]}.x."
+        + ("" if tested else " This version is outside that range and was accepted with --allow-untested-client; "
+                             "check the request bodies shown above."),
+    ]
     request = {"id": "scanoss-1", "method": "POST", "url": ENDPOINT, "body": body, "source": None,
                "purpose": f"fingerprint lookup for {n} file{'s' if n != 1 else ''} under neutral names "
                           "(hashes and line numbers only)"}
@@ -444,6 +601,7 @@ def _assemble(inv, body: str, id_map: dict, line_counts: dict, excluded: list):
             backend="scanoss", tier="fingerprint", root=str(inv.root), requests=[request], followups=[],
             disclosure=disclosure,
             cost={"requests": 1, "files": n, "quota_files": f"{n} of {FREE_TIER_DAILY} files/day",
+                  "expected_upload_requests": posts, "client_version": seen,
                   "excluded_by_reason": dict(sorted(reasons.items()))},
             excluded=listed, local_only={"id_map": dict(id_map), "line_counts": dict(line_counts)})
     except ApprovalError as exc:
@@ -457,17 +615,23 @@ def _assemble(inv, body: str, id_map: dict, line_counts: dict, excluded: list):
 _LICENSE_EVIDENCE = {"component_declared": "scanoss_component_declared", "license_file": "scanoss_license_file"}
 _PURL_SO = re.compile(r"pkg:stackoverflow/([0-9]{1,12})")
 _RANGE = re.compile(r"\s*(\d{1,9})(?:\s*-\s*(\d{1,9}))?\s*")
-_PCT = re.compile(r"\s*(\d{1,3}(?:\.\d+)?)\s*%\s*")
+_PCT = re.compile(r"\s*([0-9]{1,3}(?:\.[0-9]{1,6})?)\s*%\s*", re.ASCII)
 _REPO_NOTE = ("SCANOSS matched this repository's copy of the code. The repository may itself contain a copy "
               "taken from elsewhere (for example a Stack Overflow answer), so the origin is not established. "
               "The open tier (Stack Exchange search) can check for a Stack Overflow source.")
 
 
 def _s(value, limit=200):
-    return value.strip()[:limit] if isinstance(value, str) and value.strip() else None
+    """A short, single-line, control-character-free copy of a string from the service (or None)."""
+    if not isinstance(value, str):
+        return None
+    out = _clean(value[:20_000], min(limit, MAX_STRING)).strip()
+    return out or None
 
 
 def _url(value):
+    if isinstance(value, str) and _CTRL.search(value):
+        return None
     v = _s(value, 500)
     return v if v and re.fullmatch(r"https?://[^\s\x00-\x1f\x7f]+", v) else None
 
@@ -564,6 +728,11 @@ def parse_scan(raw: dict, id_map: dict, line_counts: dict):
             if e.get("id") not in ("file", "snippet"):
                 dropped.append({**base, "reason": "unknown_id"})
                 continue
+            mv = e.get("matched")
+            pm = _PCT.fullmatch(mv) if isinstance(mv, str) else None
+            if (pm is None and not (mv is None and e.get("id") == "file")) or (pm and float(pm.group(1)) > 100):
+                dropped.append({**base, "reason": "bad_matched"})
+                continue
             reason = scanoss_drop_reason(e)
             is_file = e.get("id") == "file" or str(e.get("lines", "")).strip().lower() == "all"
             spans = _ranges(e.get("lines"), count)
@@ -603,13 +772,12 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
     if len(reqs) > 1 or plan["followups"] or any(
             r["method"] != "POST" or r["url"] != ENDPOINT or r.get("headers") for r in reqs):
         raise ScanossError("plan_invalid", "not a SCANOSS fingerprint plan")
-    if runner is None:
-        cli = find_cli()
-        if cli is None:
+    injected = runner is not None
+    cli = find_cli()
+    if cli is None:
+        if not injected:
             raise ScanossError("scanoss_not_installed", _NOT_INSTALLED)
-        runner = make_runner()
-    else:
-        cli = find_cli() or "scanoss-py"
+        cli = "scanoss-py"
     for req in reqs:
         body = req["body"]
         try:
@@ -620,6 +788,13 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
             raise ScanossError("unsanitised_wfp", "the approved body is not a sanitised WFP; nothing was sent") \
                 from None
         data = body.encode("utf-8")
+        posts = expected_posts(body, len(id_map))
+        if posts > MAX_EXPECTED_POSTS:
+            raise ScanossError("plan_too_large", f"the upload would need about {posts} requests (limit "
+                                                 f"{MAX_EXPECTED_POSTS}); nothing was sent")
+        if not injected:
+            budget = scan_timeout(posts)
+            runner = make_runner(total=budget, per_call=budget)
         tmp = Path(tempfile.mkdtemp(prefix="scanoss-run-"))
         try:
             wfp = tmp / "approved.wfp"
@@ -631,16 +806,17 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
             argv = [cli, "scan", "--wfp", str(wfp), "--apiurl", API_BASE, "--skip-settings-file", "-o", str(out),
                     "--retry", "0", "--timeout", str(CALL_TIMEOUT - 5)]
             files = len(id_map)
-            code, detail, status = None, "", None
+            code, detail, status, started = None, "", None, True
             try:
                 rc, _so, err = runner(argv, child_env(), str(tmp))
             except Exception as exc:
                 rc, err = 1, f"{type(exc).__name__}"
             if rc != 0:
-                if re.search(r"\b429\b|too many requests", err or "", re.I):
-                    code, status = "quota_exhausted", 429
-                else:
-                    code = "backend_failed"
+                # once the child has started, the service may already hold (part of) the upload
+                started = not (rc == 127 and re.match(r"(cannot start|refusing)", err or ""))
+                status = "possibly_sent" if started else None
+                code = ("quota_exhausted" if re.search(r"\b429\b|too many requests", err or "", re.I)
+                        else "backend_failed")
                 detail = scrub(err, (tmp,)).strip()[:300] or f"scanoss-py exited with code {rc}"
             else:
                 try:
@@ -656,13 +832,15 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
             guard.record("POST", ENDPOINT, data, status=status, attempts=1, error=code)
             if code:
                 res["errors"].append(_error(code, detail, req["id"]))
-                res["not_sent"].append({"id": req["id"], "method": "POST", "url": ENDPOINT, "files": files,
-                                        "reason": code})
+                if not started:
+                    res["not_sent"].append({"id": req["id"], "method": "POST", "url": ENDPOINT, "files": files,
+                                            "reason": code})
             else:
                 matches, dropped, kb = parse_scan(raw, id_map, {k: v for k, v in counts.items()
                                                                 if isinstance(v, int)})
                 res["matches"] = [raw_match_to_dict(m) for m in matches]
-                res["dropped"] = dropped
+                res["dropped"] = dropped[:MAX_DROPPED]
+                res["dropped_truncated"] = max(0, len(dropped) - MAX_DROPPED)
                 res["kb_version"] = kb
                 missing = [n for n in id_map if n not in raw]
                 if missing:
@@ -670,8 +848,27 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
     res["requests_sent"] = list(guard.sent)
+    for entry in res["requests_sent"]:
+        if entry.get("status") == "possibly_sent":
+            entry["note"] = "upload may have reached the service"
     _notes(res, plan)
+    _cap_results(res)
     return res
+
+
+def _cap_results(res: dict) -> None:
+    """Keep the results file under MAX_RESULTS_BYTES by halving matches and dropped, with a coverage error."""
+    def size():
+        return len(json.dumps(res, ensure_ascii=False))
+
+    if size() <= MAX_RESULTS_BYTES:
+        return
+    before = len(res["matches"])
+    while size() > MAX_RESULTS_BYTES and (res["matches"] or res["dropped"]):
+        res["matches"] = res["matches"][:len(res["matches"]) // 2]
+        res["dropped"] = res["dropped"][:len(res["dropped"]) // 2]
+    res["errors"].append(_error("results_truncated", f"results exceeded {MAX_RESULTS_BYTES} bytes; kept "
+                                                     f"{len(res['matches'])} of {before} matches"))
 
 
 def _notes(res: dict, plan: dict) -> None:
@@ -691,6 +888,8 @@ def _notes(res: dict, plan: dict) -> None:
                  "; it does not show that the code is original.")
     if res["errors"]:
         notes.append("The lookup failed: the fingerprinted files were NOT checked. See coverage errors.")
+    if any(e.get("status") == "possibly_sent" for e in res["requests_sent"]):
+        notes.append("The upload may have reached the service (and used free-tier quota) although the scan failed.")
     by_reason = plan["cost"].get("excluded_by_reason") if isinstance(plan["cost"], dict) else None
     if isinstance(by_reason, dict) and by_reason:
         res["excluded_by_reason"] = dict(by_reason)
@@ -722,6 +921,7 @@ def main(argv: list, runner=None) -> int:
     p.add_argument("--include", nargs="+", action="extend", default=[])
     p.add_argument("--out", required=True)
     p.add_argument("--max-files", type=int, default=SCANOSS_MAX_FILES)
+    p.add_argument("--allow-untested-client", action="store_true")
     r = sub.add_parser("run")
     r.add_argument("plan")
     r.add_argument("--sha256", required=True)
@@ -729,7 +929,8 @@ def main(argv: list, runner=None) -> int:
     args = ap.parse_args(argv)
     try:
         if args.cmd == "plan":
-            plan = make_plan(Path(args.root), args.include, runner=runner, max_files=args.max_files)
+            plan = make_plan(Path(args.root), args.include, runner=runner, max_files=args.max_files,
+                             allow_untested=args.allow_untested_client)
             write_plan(plan, Path(args.out), exclusive=True)
             id_map = plan["local_only"]["id_map"]
             files = [{"name": n, "rel": id_map[n]} for n in sorted(id_map, key=_numeric_key)]
