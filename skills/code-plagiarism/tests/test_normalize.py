@@ -20,10 +20,6 @@ def texts(toks):
     return [t.text for t in toks]
 
 
-def test_constants():
-    assert (K_GRAM, MAX_GAP_TOKENS, MIN_MATCH_TOKENS) == (10, 8, 40)
-
-
 def test_comments_stripped_c_like_and_hash():
     src = ["a = 1; // note", "/* multi", "line */ b = 2;", 'c = "x // y";']
     assert texts(tokenize(src, "c_like")) == [
@@ -73,21 +69,6 @@ def test_renamed_copy_is_normalised():
     assert first <= 5 and last >= 16  # function body (comment lines excluded)
 
 
-def test_inserted_lines_is_near():
-    orig = c1()
-    mod = orig[:10] + ["  n++;", "  n++;"] + orig[10:]
-    a, b = tokenize(orig, "c_like"), tokenize(mod, "c_like")
-    for x, y in ((a, b), (b, a)):
-        m = compare(x, y)
-        assert m is not None and m.match_type == "near"
-        assert 0.5 <= m.coverage < FULL_COVERAGE
-
-
-def test_original_code_no_match():
-    c8 = tokenize(read_lines(next((CASES / "C8").glob("*.py"))), "hash")
-    assert compare(tokenize(c1(), "c_like"), c8) is None
-
-
 def test_short_overlap_below_threshold():
     shared = ["function f(a) {", "  return a + 1;", "}"]
     a = tokenize(c1() + shared, "c_like")
@@ -131,8 +112,8 @@ def test_perf_200k_lines():
 
 
 def test_perf_compare_50k_tokens():
-    a = tokenize([f"v{i} = f(g{i}, {i});" for i in range(6000)], "c_like")
-    b = tokenize([f"v{i} = f(g{i}, {i});" for i in range(6000)], "c_like")
+    a = tokenize(filler(6000, "v", 31), "c_like")
+    b = tokenize(filler(6000, "v", 31), "c_like")
     assert len(a) >= 50_000
     m = _timed(lambda: compare(a, b))
     assert m is not None
@@ -152,3 +133,273 @@ def test_perf_nested_brackets():
     toks = _timed(lambda: tokenize(["(" * 100_000 + ")" * 100_000], "c_like"))
     assert len(toks) == 200_000
     _timed(lambda: compare(toks, toks))
+
+
+# ---------------------------------------------------------------- round 1 fixes
+import random  # noqa: E402
+
+from normalize import (MAX_DIAG_DRIFT, MIN_DISTINCT_KGRAMS, MIN_KGRAM_VARIETY,  # noqa: E402
+                       MIN_MATCH_LINES, NEAR_MIN_COVERAGE, compare_all)
+
+
+def toks_js(lines):
+    return tokenize(lines, "c_like")
+
+
+def filler(n, tag, seed=1):
+    """Unrelated, high-variety lines: random mixes of operators, keywords and names."""
+    rnd = random.Random(seed)
+    vocab = ["if", "(", ")", "{", "}", "+", "-", "*", "return", "for", "while", "=", ";", ".",
+             "[", "]", ",", "<", ">", "&&", "new", "!", "?", ":"]
+    out = []
+    for i in range(n):
+        parts = []
+        for _ in range(rnd.randrange(6, 13)):
+            r = rnd.random()
+            parts.append(rnd.choice(vocab) if r < 0.6 else
+                         f"{tag}{rnd.randrange(10**6)}" if r < 0.85 else str(rnd.randrange(999)))
+        out.append(" ".join(parts))
+    return out
+
+
+def lines_of(toks, m):
+    return (token_line_span(toks, m.a_start, m.a_end),)
+
+
+def check_mirror(a, b):
+    m1, m2 = compare(a, b), compare(b, a)
+    assert m1 is not None and m2 is not None
+    assert (m1.match_type, m1.coverage, m1.tokens) == (m2.match_type, m2.coverage, m2.tokens)
+    assert (m1.a_start, m1.a_end, m1.b_start, m1.b_end) == (m2.b_start, m2.b_end, m2.a_start, m2.a_end)
+    return m1
+
+
+def test_constants_ruling():
+    # ruling: MAX_GAP_TOKENS raised from the plan's 8 to 40 (symmetric, both sides)
+    assert (K_GRAM, MAX_GAP_TOKENS, MIN_MATCH_TOKENS, MIN_MATCH_LINES) == (10, 40, 40, 5)
+    assert (FULL_COVERAGE, NEAR_MIN_COVERAGE, MAX_DIAG_DRIFT) == (0.9, 0.5, 64)
+    assert (MIN_KGRAM_VARIETY, MIN_DISTINCT_KGRAMS) == (0.5, 20)
+
+
+def test_insertions_symmetric_near():
+    orig = c1()
+    a = toks_js(orig)
+    cases = {
+        "2x n++": ["  n++;"] * 2,
+        "2 statements": [f"  q{i} = w{i} + {i};" for i in range(2)],
+        "12x n++": ["  n++;"] * 12,
+    }
+    for name, ins in cases.items():
+        b = toks_js(orig[:10] + ins + orig[10:])
+        m = check_mirror(a, b)
+        assert m.match_type == "near", name
+        assert NEAR_MIN_COVERAGE <= m.coverage < 1.0, name
+        # b span is longer than a span by exactly the inserted tokens
+        assert (m.b_end - m.b_start) - (m.a_end - m.a_start) == len(toks_js(ins)), name
+
+
+def test_k1_few_tokens_not_inflated():
+    names = [f"    'n{i}', 'm{i}', 'k{i}'," for i in range(20)]
+    a = tokenize(["NAMES = ["] + names + ["]"], "hash")
+    b = tokenize(["COLORS = ['red', 'green', 'blue', 'cyan', 'pink', 'gold']"], "hash")
+    assert compare(a, b) is None and compare(b, a) is None
+
+
+def test_all_lists_are_boilerplate():
+    a = tokenize(["__all__ = ["] + [f"    'Alpha{i}'," for i in range(80)] + ["]"], "hash")
+    b = tokenize(["__all__ = ["] + [f"    'Beta{i}'," for i in range(70)] + ["]"], "hash")
+    assert compare(a, b) is None
+
+
+def bean(cls, fields):
+    out = ["package com.example.model;", "", "import java.util.Objects;", "", f"public class {cls} {{"]
+    for t, f in fields:
+        out.append(f"    private {t} {f};")
+    out.append("")
+    for t, f in fields:
+        F = f[0].upper() + f[1:]
+        out += [f"    public {t} get{F}() {{", f"        return {f};", "    }", "",
+                f"    public void set{F}({t} {f}) {{", f"        this.{f} = {f};", "    }", ""]
+    out.append("}")
+    return out
+
+
+def test_boilerplate_floods_dropped():
+    words = ["name", "email", "street", "city", "zip", "phone", "age", "score", "title", "owner",
+             "status", "created", "updated", "price", "qty"]
+    a = toks_js(bean("Customer", [("String", w + "A") for w in words]))
+    b = toks_js(bean("Order", [("String", w[::-1] + "B") for w in words]))
+    assert compare(a, b) is None
+    big_a = toks_js(bean("Big", [("String", f"fieldA{i}") for i in range(100)]))
+    big_b = toks_js(bean("Other", [("Integer", f"q{i}") for i in range(100)]))
+    assert compare(big_a, big_b) is None
+    t1 = [f"    {{ id: {i}, name: 'item{i}', price: {i * 3}, active: true }}," for i in range(60)]
+    t2 = [f"    {{ id: {i + 500}, name: 'p{i}', price: {i * 7}, active: false }}," for i in range(60)]
+    assert compare(toks_js(["const A = ["] + t1 + ["];"]), toks_js(["const B = ["] + t2 + ["];"])) is None
+
+
+def test_real_logic_still_matches_after_filters():
+    a = toks_js(c1())
+    c10 = toks_js(read_lines(next((CASES / "C10").glob("*.js"))))
+    assert compare(a, c10).match_type == "normalised"
+    assert compare(a, a).match_type == "exact"
+
+
+def test_embedded_copy_spans():
+    f1, f2 = filler(250, "u", 1), filler(250, "v", 2)
+    a = toks_js(c1())
+    b = toks_js(f1 + c1() + f2)
+    m = compare(a, b)
+    assert m.match_type == "exact"
+    assert token_line_span(a, m.a_start, m.a_end) == (4, 17)
+    assert token_line_span(b, m.b_start, m.b_end) == (254, 267)
+    assert (m.b_end - m.b_start) == (m.a_end - m.a_start) == m.tokens
+    r = compare(b, a)
+    assert r.match_type == "exact" and token_line_span(b, r.a_start, r.a_end) == (254, 267)
+
+
+def test_two_copies_both_reported():
+    f = filler(200, "u", 3)
+    a = toks_js(c1())
+    b = toks_js(f[:100] + c1() + f[100:] + c1())
+    ms = compare_all(a, b)
+    assert len(ms) == 2 and all(m.match_type == "exact" for m in ms)
+    assert [m.b_start for m in ms] == sorted(m.b_start for m in ms)
+    assert token_line_span(b, ms[0].b_start, ms[0].b_end) == (104, 117)
+    assert token_line_span(b, ms[1].b_start, ms[1].b_end) == (221, 234)
+    assert all(token_line_span(a, m.a_start, m.a_end) == (4, 17) for m in ms)
+
+
+def test_swapped_functions_two_regions():
+    f1 = c1()[3:16]
+    f2 = ["function other(x, y) {", "  const z = x * y + 3;", "  if (z > 10) {", "    return compute(z, x);",
+          "  }", "  for (let i = 0; i < y; i++) { x += i; }", "  return x - y;", "}"]
+    a, b = toks_js(f1 + f2), toks_js(f2 + f1)
+    ms = compare_all(a, b)
+    assert len(ms) == 2
+    assert [m.a_start for m in ms] == sorted(m.a_start for m in ms)
+    assert all(m.match_type == "exact" for m in ms)
+    spans = [(token_line_span(a, m.a_start, m.a_end), token_line_span(b, m.b_start, m.b_end)) for m in ms]
+    assert spans == [((1, 12), (9, 20)), ((14, 21), (1, 8))]
+    best = compare(a, b)
+    assert best is not None and best.tokens == max(m.tokens for m in ms)
+
+
+def test_verbatim_copy_followed_by_boilerplate():
+    setters = [f"  set{i}(v) {{ this.f{i} = v; }}" for i in range(15)]
+    f = filler(40, "u", 4)
+    a = toks_js(c1() + setters)
+    b = toks_js(setters + f + c1())
+    m = compare(a, b)
+    assert m.match_type == "exact" and m.coverage >= FULL_COVERAGE
+    assert token_line_span(a, m.a_start, m.a_end) == (4, 17)
+    assert token_line_span(b, m.b_start, m.b_end) == (59, 72)
+
+
+def test_paste_into_large_file():
+    rnd = random.Random(5)
+    x = filler(1500, "x", 6)
+    y = filler(400, "y", 7)
+    pasted = y[50:350]
+    a = toks_js(x[:700] + pasted + x[700:])
+    b = toks_js(y)
+    m = compare(a, b)
+    assert m.match_type == "exact"
+    la, lb = token_line_span(a, m.a_start, m.a_end), token_line_span(b, m.b_start, m.b_end)
+    assert abs(la[0] - 701) <= 1 and abs(la[1] - 1000) <= 1
+    assert abs(lb[0] - 51) <= 1 and abs(lb[1] - 350) <= 1
+    assert rnd is not None
+
+
+def test_large_shared_block_between_big_files():
+    shared = filler(1200, "s", 8)
+    a = toks_js(filler(1500, "a", 9)[:600] + shared + filler(1500, "a", 10)[:700])
+    b = toks_js(filler(1500, "b", 11)[:300] + shared + filler(1500, "b", 12)[:900])
+    m = compare(a, b)
+    assert m is not None and m.match_type == "exact"
+    la, lb = token_line_span(a, m.a_start, m.a_end), token_line_span(b, m.b_start, m.b_end)
+    assert abs(la[0] - 601) <= 1 and abs(la[1] - 1800) <= 1
+    assert abs(lb[0] - 301) <= 1 and abs(lb[1] - 1500) <= 1
+
+
+def test_later_exact_copy_beats_earlier_renamed_copy():
+    c10 = read_lines(next((CASES / "C10").glob("*.js")))
+    fill = [f"var w{i} = [{i}];" for i in range(30)]
+    a = toks_js(c1())
+    for lead in (c10, c10 * 9):
+        b = toks_js(lead + fill + c1())
+        m = compare(a, b)
+        assert m.match_type == "exact"
+        last = b[-1].line
+        assert token_line_span(b, m.b_start, m.b_end) == (last - 13, last)
+
+
+def test_original_code_no_match_same_family():
+    fn1 = ["function checksum(buf) {", "  let h = 17;", "  for (let i = 0; i < buf.length; i++) {",
+           "    h = (h * 31 + buf[i]) % 65521;", "  }", "  return h ^ (h >>> 3);", "}"]
+    fn2 = ["async function loadAll(urls) {", "  const out = new Map();", "  for (const u of urls) {",
+           "    const r = await fetch(u);", "    out.set(u, await r.text());", "  }", "  return out;", "}"]
+    assert compare(toks_js(fn1), toks_js(fn2)) is None
+    assert compare(toks_js(c1()), toks_js(fn2)) is None
+    c8 = tokenize(read_lines(next((CASES / "C8").glob("*.py"))), "hash")
+    other = tokenize(["def merge_runs(runs, gap=2):", "    runs = sorted(runs)", "    out = [list(runs[0])]",
+                      "    for lo, hi in runs[1:]:", "        if lo - out[-1][1] <= gap:",
+                      "            out[-1][1] = max(out[-1][1], hi)", "        else:",
+                      "            out.append([lo, hi])", "    return [tuple(r) for r in out]"], "hash")
+    assert compare(c8, other) is None and compare(other, c8) is None
+
+
+def test_compare_all_limits_and_empty():
+    assert compare_all([], []) == []
+    a = toks_js(c1())
+    b = toks_js(c1() * 8)
+    assert len(compare_all(a, b, max_regions=3)) == 3
+
+
+def test_matchtype_checked_inside_chain():
+    # a near-copy where only a rename differs in one place is not "exact"
+    mod = [l.replace("postId", "pid") for l in c1()]
+    m = compare(toks_js(c1()), toks_js(mod))
+    assert m.match_type in ("normalised", "near")
+
+
+def test_perf_200k_low_variety_compare():
+    xs = tokenize(["x = 1"] * 66_667, "hash")
+    assert len(xs) >= 200_000
+    _timed(lambda: compare(xs, xs))
+    ys = tokenize(["y = 2"] * 66_667, "hash")
+    _timed(lambda: compare(xs, ys))
+    rnd = random.Random(7)
+    sa = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(20000)], "c_like")
+    sb = tokenize([" ".join(rnd.choice("();") for _ in range(10)) for _ in range(20000)], "c_like")
+    _timed(lambda: compare(sa, sb))
+    pa = tokenize([" ".join("a b ( ) ; , ."[2 * ((i + j * 10) % 7)] for i in range(10)) for j in range(20000)],
+                  "c_like")
+    _timed(lambda: compare(pa, pa))
+
+
+def test_perf_200k_varied_with_shared_block():
+    shared = filler(4800, "s", 21)
+    a = toks_js(filler(6000, "a", 22)[:5000] + shared + filler(6000, "a", 23)[:5200])
+    b = toks_js(filler(6000, "b", 24)[:3000] + shared + filler(6000, "b", 25)[:5200])
+    assert len(a) > 120_000
+    m = _timed(lambda: compare(a, b))
+    assert m is not None and m.match_type == "exact"
+    assert abs(token_line_span(a, m.a_start, m.a_end)[0] - 5001) <= 1
+    assert abs(token_line_span(b, m.b_start, m.b_end)[0] - 3001) <= 1
+
+
+def test_threshold_applies_to_both_spans():
+    # b is a 5-line, <40-token block; a is the same block with 24 tokens inserted, so
+    # a's span reaches 40+ tokens and coverage stays >= 0.5, yet b's span is too short.
+    for seed in range(100):
+        lines = filler(5, "t", seed)
+        b = toks_js(lines)
+        if 34 <= len(b) < MIN_MATCH_TOKENS:
+            break
+    else:
+        raise AssertionError("no seed")
+    ins = filler(3, "i", 99)
+    a = toks_js(lines[:2] + ins + lines[2:])
+    assert len(a) - len(b) >= MIN_MATCH_TOKENS - len(b) + 5 and len(a) - len(b) <= MAX_GAP_TOKENS
+    assert compare(a, b) is None and compare(b, a) is None
