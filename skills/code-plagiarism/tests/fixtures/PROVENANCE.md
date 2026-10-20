@@ -32,7 +32,8 @@ All recorded 2026-10-20 during the backend spike (`$SPIKE` = the spike scratchpa
 | `se_answers_53954986.json` | Stack Exchange `/answers/53954986` (C1p) | `$SPIKE/dl/a53.json` |
 | `se_answers_noamopt.json` | Stack Exchange `/answers` check for the `NoamOpt` posts (C9) | `$SPIKE/dl/chk.json` |
 | `cd_attrs_24.1.0.json` | ClearlyDefined definition for `attrs` 24.1.0 | `$SPIKE/dl/cd.json` |
-| `index.json` | Replay index (format defined in a later task); empty `{}` for now | none |
+| `7f36c03800c8df50.body` (indexed in `index.json`) | ClearlyDefined `POST https://api.clearlydefined.io/definitions` with body `["npm/npmjs/-/is-odd/3.0.1"]` (C6 declared dependency); recorded live 2026-10-20 by `deps.py run --record`, HTTP 200, `licensed.declared` MIT | none (live capture; public package coordinate only) |
+| `index.json` | Replay index (`request_key` -> recorded file, status, headers); entries are added by `RecordingOpener` | none |
 
 ## Licence of these fixtures
 
