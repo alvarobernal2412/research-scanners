@@ -15,6 +15,9 @@ from patterns import Pattern, load_patterns  # noqa: E402
 from stats import compute_stats  # noqa: E402
 
 DENSE_MIN_CATEGORIES = 3
+DENSE_MIN_PER_1K = 30.0  # weighted non-contested hits per 1,000 words a dense section needs
+DENSE_DENOMINATOR_MIN_WORDS = 100  # denominator floor so tiny sections are not inflated
+_APOSTROPHES = str.maketrans({"’": "'", "‘": "'"})
 ENGLISH_MIN_STOPWORD_RATIO = 0.15
 PROFILES = ("general", "academic", "technical", "marketing")
 DISCLAIMER = (
@@ -47,9 +50,20 @@ def find_hits(lines: list[Line], patterns: list[Pattern]) -> list[Finding]:
     for ln in lines:
         if ln.in_code or ln.in_quote:
             continue
-        for p, rx in compiled:
-            for m in rx.finditer(ln.text):
-                out.append(Finding(ln.no, m.group(0), p.id, p.category, p.source, p.weight, p.contested))
+        # Same-length copy with typographic apostrophes normalised, so spans map back.
+        haystack = ln.text.translate(_APOSTROPHES)
+        cands = []  # (catalog index, start, end, pattern)
+        for idx, (p, rx) in enumerate(compiled):
+            for m in rx.finditer(haystack):
+                cands.append((idx, m.start(), m.end(), p))
+        # Overlapping spans on one line: keep only the highest-weight finding
+        # (ties: first in catalog order), so one phrase is not counted twice.
+        kept: list[tuple[int, int, int, Pattern]] = []
+        for c in sorted(cands, key=lambda c: (-c[3].weight, c[0], c[1])):
+            if all(c[2] <= k[1] or c[1] >= k[2] for k in kept):
+                kept.append(c)
+        for idx, s, e, p in sorted(kept, key=lambda c: (c[0], c[1])):
+            out.append(Finding(ln.no, ln.text[s:e], p.id, p.category, p.source, p.weight, p.contested))
     return out
 
 
@@ -68,14 +82,18 @@ def _sections(lines: list[Line], findings: list[Finding]) -> list[dict]:
         end_idx = (starts[n + 1][0] if n + 1 < len(starts) else len(lines)) - 1
         lo, hi = lines[idx].no, lines[end_idx].no
         mine = [f for f in findings if lo <= f.line <= hi]
-        cats = sorted({f.category for f in mine if not f.contested})
+        firm = [f for f in mine if not f.contested]
+        cats = sorted({f.category for f in firm})
+        words = compute_stats(lines[idx:end_idx + 1])["words"]
+        density = sum(f.weight for f in firm) / max(words, DENSE_DENOMINATOR_MIN_WORDS) * 1000
         out.append({
             "heading": heading,
             "start_line": lo,
             "end_line": hi,
             "categories": cats,
             "hit_count": len(mine),
-            "dense": len(cats) >= DENSE_MIN_CATEGORIES,
+            "density_per_1k": density,
+            "dense": len(cats) >= DENSE_MIN_CATEGORIES and density >= DENSE_MIN_PER_1K,
         })
     return out
 
@@ -91,15 +109,33 @@ def _language_note(lines: list[Line]) -> str | None:
     return None
 
 
-def build_report(path: Path, patterns_dir: Path, profile: str = "general") -> dict:
+class CatalogError(Exception):
+    pass
+
+
+def load_catalog(patterns_dir: Path, profile: str = "general") -> list[Pattern]:
+    try:
+        loaded = load_patterns(Path(patterns_dir))
+    except (ValueError, OSError) as e:  # JSONDecodeError and UnicodeDecodeError are ValueErrors
+        raise CatalogError(str(e)[:200]) from e
+    if not any(p.regex for p in loaded):
+        raise CatalogError(f"no regex patterns found in {patterns_dir}")
+    return [p for p in loaded if p.profiles is None or profile in p.profiles]
+
+
+def build_report(path: Path, patterns_dir: Path, profile: str = "general",
+                 patterns: list[Pattern] | None = None) -> dict:
     path = Path(path)
     lines = extract(path)
-    patterns = [p for p in load_patterns(Path(patterns_dir))
-                if p.profiles is None or profile in p.profiles]
+    if not any(l.text.strip() for l in lines):
+        raise ExtractError("no_text_extracted", f"no text extracted from {path.name}")
+    if patterns is None:
+        patterns = load_catalog(patterns_dir, profile)
     findings = find_hits(lines, patterns)
     stats = compute_stats(lines)
     words = stats["words"]
-    density = sum(f.weight for f in findings) / words * 1000 if words else 0.0
+    firm = sum(f.weight for f in findings if not f.contested)
+    density = firm / words * 1000 if words else 0.0
     return {
         "file": str(path),
         "profile": profile,
@@ -126,7 +162,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"error": "file_not_found"}))
         return 2
     try:
-        report = build_report(path, Path(args.patterns_dir), args.profile)
+        patterns = load_catalog(Path(args.patterns_dir), args.profile)
+    except CatalogError as e:
+        print(json.dumps({"error": "catalog_error", "detail": str(e)}))
+        return 2
+    try:
+        report = build_report(path, Path(args.patterns_dir), args.profile, patterns)
     except ExtractError as e:
         print(json.dumps({"error": e.code}))
         return 2
