@@ -1,0 +1,221 @@
+[
+ {
+  "id": "stock-vocabulary",
+  "category": "lexical",
+  "regex": "\\b(?:delves?|delving|tapestry|realm of|pivotal|testament to|underscores?|showcas(?:e|es|ing)|multifaceted|intricate interplay|ever-evolving landscape)\\b",
+  "weight": 1.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); Kobak et al. — https://arxiv.org/abs/2406.07016 (excess vocabulary)",
+  "explanation": "Words LLMs use far more often than humans; weigh clusters, not single hits.",
+  "example": "Let's delve into the ever-evolving landscape of modern design."
+ },
+ {
+  "id": "gravitas-crucial-pivotal",
+  "category": "lexical",
+  "regex": "\\b(?:crucial|pivotal|vital) (?:role|importance|component|aspect)\\b",
+  "weight": 0.8,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Gravitas words used as decoration for ordinary facts.",
+  "example": "It plays a crucial role in the region."
+ },
+ {
+  "id": "copula-avoidance",
+  "category": "lexical",
+  "regex": "\\b(?:serves as|stands as|acts as a testament|boasts (?:a|an|over)|features (?:a|an) (?:wide|diverse|rich))\\b",
+  "weight": 1.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Elaborate verbs replacing plain 'is' or 'has'.",
+  "example": "The library serves as a reminder of local history."
+ },
+ {
+  "id": "promotional-register",
+  "category": "lexical",
+  "regex": "\\b(?:nestled (?:in|within|among)|vibrant (?:community|city|culture)|rich cultural heritage|renowned for|commitment to excellence|breathtaking)\\b",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Brochure-style promotional tone in neutral prose.",
+  "example": "Nestled in the hills, the town has a rich cultural heritage."
+ },
+ {
+  "id": "significance-legacy",
+  "category": "rhetorical",
+  "regex": "\\b(?:setting the stage for|marks? a (?:pivotal|significant) (?:moment|shift)|(?:enduring|lasting) legacy|evolving landscape|indelible mark)\\b",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Inflated claims about significance or legacy.",
+  "example": "The treaty was setting the stage for decades of change in the evolving landscape."
+ },
+ {
+  "id": "trailing-ing-significance",
+  "category": "structural",
+  "regex": ",\\s+(?:highlighting|underscoring|emphasizing|reflecting|showcasing|symbolizing|contributing to) (?:its|the|their|a|an)\\b[^.]{0,60}\\b(?:importance|significance|role|impact|commitment|legacy|growth)\\b",
+  "weight": 1.5,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Tacked-on participle clause asserting significance.",
+  "example": "The bridge opened in 1920, highlighting its importance to regional trade."
+ },
+ {
+  "id": "vague-attribution",
+  "category": "structural",
+  "regex": "\\b(?:experts (?:argue|say|believe)|observers have (?:cited|noted)|industry reports (?:suggest|indicate)|some critics argue|it has been (?:argued|noted) that)\\b",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Unnamed authorities with no citation.",
+  "example": "Experts argue that the policy changed everything."
+ },
+ {
+  "id": "despite-challenges-formula",
+  "category": "structural",
+  "regex": "\\bdespite (?:these|its|the|several) (?:challenges|setbacks|obstacles)[^.]{0,80}\\b(?:continues? to|remains|persists?)\\b",
+  "weight": 1.5,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Formulaic 'despite challenges, continues to thrive' paragraph.",
+  "example": "Despite its challenges, the town continues to thrive."
+ },
+ {
+  "id": "negative-parallelism",
+  "category": "structural",
+  "regex": "\\b(?:it'?s|this is|that'?s) not (?:just |merely |only )?[^.;]{1,60}[.;,]\\s*(?:it'?s|but|this is|that'?s)\\b",
+  "weight": 1.8,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "'It's not X. It's Y.' contrast framing.",
+  "example": "It's not bold. It's backwards."
+ },
+ {
+  "id": "not-only-but-also",
+  "category": "structural",
+  "regex": "\\bnot (?:only|just|merely) [^.]{1,60}, but (?:also )?\\w",
+  "weight": 0.8,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "'Not only X but also Y' stacking.",
+  "example": "It is not only fast, but also reliable."
+ },
+ {
+  "id": "chatbot-i-hope-this-helps",
+  "category": "chatbot_residue",
+  "regex": "\\b(?:i hope this helps|hope this helps|let me know if you(?:'d| would)? like|feel free to ask)\\b",
+  "weight": 2.5,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Conversational closer left in the text.",
+  "example": "I hope this helps! Let me know if you'd like changes."
+ },
+ {
+  "id": "chatbot-as-an-ai",
+  "category": "chatbot_residue",
+  "regex": "\\bas an ai (?:language )?model\\b|\\bi (?:cannot|can't) (?:fulfill|assist with) (?:this|that) request\\b",
+  "weight": 3.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Prompt refusal or self-identification residue.",
+  "example": "As an AI language model, I cannot browse the web."
+ },
+ {
+  "id": "chatbot-knowledge-cutoff",
+  "category": "chatbot_residue",
+  "regex": "\\b(?:as of (?:my|the) (?:last|latest) (?:knowledge )?(?:update|training)|my knowledge cutoff|up to my last training)\\b",
+  "weight": 3.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Knowledge-cutoff disclaimer.",
+  "example": "As of my last knowledge update, the figures were lower."
+ },
+ {
+  "id": "chatbot-placeholder-text",
+  "category": "chatbot_residue",
+  "regex": "\\[(?:insert|your|name|date|company)[^\\]]{0,30}\\]",
+  "weight": 2.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Unfilled template placeholder.",
+  "example": "Dear [Insert Name], thank you."
+ },
+ {
+  "id": "utm-source-chatgpt",
+  "category": "chatbot_residue",
+  "regex": "[?&]utm_source=(?:chatgpt\\.com|openai|copilot)",
+  "weight": 3.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Tracking parameter appended by chatbot citations.",
+  "example": "https://example.com/page?utm_source=chatgpt.com"
+ },
+ {
+  "id": "chatbot-citation-artifacts",
+  "category": "chatbot_residue",
+  "regex": "\\bcite(?:_|\\s)?turn\\d+\\w*|\\boaicite\\b|:contentReference\\[|\\[attached_file:\\d+\\]",
+  "weight": 3.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Internal citation tokens leaked from the chat interface.",
+  "example": "See the source :contentReference[oaicite:0]{index=0}."
+ },
+ {
+  "id": "markdown-in-plain-text",
+  "category": "formatting",
+  "regex": "(?m)^#{1,4} \\S.*\\n(?:\\s*\\n)?\\s*\\*\\*[^*]+\\*\\*:",
+  "weight": 1.0,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Markdown headings plus bold labels pasted into non-Markdown venues.",
+  "example": "## Overview\n\n**Key point**: it works."
+ },
+ {
+  "id": "em-dash-overuse",
+  "category": "formatting",
+  "regex": "\\w\\s?—\\s?\\w",
+  "weight": 0.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Em-dashes: Wikipedia lists this as a historical sign; contested and weak. Count density, never one hit.",
+  "example": "The tool—despite its flaws—works.",
+  "contested": true
+ },
+ {
+  "id": "bold-first-bullets",
+  "category": "formatting",
+  "regex": "(?m)^\\s*[-*] \\*\\*[^*\\n]{1,60}\\*\\*\\s*[:–-]",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Bullet lists whose items open with a bold label.",
+  "example": "- **Speed**: much faster than before."
+ },
+ {
+  "id": "emoji-bullets",
+  "category": "formatting",
+  "regex": "(?m)^\\s*(?:[-*]\\s*)?[\\U0001F300-\\U0001FAFF✅✨⭐➡✔]️?\\s+\\S",
+  "weight": 1.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Emoji used as bullet markers or heading decoration.",
+  "example": "✅ Faster builds"
+ },
+ {
+  "id": "signposted-conclusion",
+  "category": "document",
+  "regex": "^\\s*(?:in conclusion|in summary|to sum up|overall,)",
+  "weight": 1.5,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Paragraph that announces it is a conclusion and repeats earlier points.",
+  "example": "In conclusion, the project shows great promise."
+ },
+ {
+  "id": "filler-transitions",
+  "category": "structural",
+  "regex": "(?:^|[.!?]\\s+)(?:importantly|notably|moreover|furthermore|additionally),\\s",
+  "weight": 0.6,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Sentence-initial filler transitions; weak alone.",
+  "example": "Importantly, the results hold."
+ },
+ {
+  "id": "curly-quotes",
+  "category": "formatting",
+  "regex": "[“”]",
+  "weight": 0.1,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0)",
+  "explanation": "Curly quotes; weak because word processors produce them.",
+  "example": "He said “no”.",
+  "contested": true
+ },
+ {
+  "id": "unicode-arrows",
+  "category": "formatting",
+  "regex": "[→⇒]",
+  "weight": 0.2,
+  "source": "Wikipedia — https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing (CC BY-SA 4.0); tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Unicode arrows in prose.",
+  "example": "Input → output",
+  "contested": true
+ }
+]

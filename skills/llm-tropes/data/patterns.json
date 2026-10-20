@@ -1,0 +1,290 @@
+[
+ {
+  "id": "filler-adverbs",
+  "category": "lexical",
+  "regex": "\\b(?:quietly|deeply|fundamentally|profoundly|seamlessly) (?:reshap\\w+|orchestrat\\w+|transform\\w+|chang\\w+|rooted|connected|integrat\\w+)\\b",
+  "weight": 1.0,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Intensifying adverbs that add no information.",
+  "example": "quietly orchestrating workflows"
+ },
+ {
+  "id": "cliched-idioms",
+  "category": "lexical",
+  "regex": "\\b(?:perfect storm|double-edged sword|game[- ]changer|north star|at the end of the day)\\b",
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording); blader/humanizer — https://github.com/blader/humanizer (MIT)",
+  "explanation": "Stock idioms used as decoration.",
+  "example": "It was a perfect storm of factors."
+ },
+ {
+  "id": "magic-nouns-ecosystem",
+  "category": "lexical",
+  "regex": "\\b(?:rich tapestry|dynamic ecosystem|ever-changing landscape|vibrant ecosystem|navigating the (?:complexities|landscape))\\b",
+  "weight": 1.2,
+  "source": "FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT); Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
+  "explanation": "Metaphorical filler nouns.",
+  "example": "Navigating the complexities of modern work."
+ },
+ {
+  "id": "excess-vocabulary-density",
+  "category": "lexical",
+  "regex": null,
+  "weight": 1.0,
+  "source": "Kobak et al. — https://arxiv.org/abs/2406.07016 (excess vocabulary)",
+  "explanation": "Statistical: words whose frequency jumped after 2022 versus a baseline; needs a corpus, not a regex.",
+  "example": "(statistical measure)"
+ },
+ {
+  "id": "negation-countdown",
+  "category": "structural",
+  "regex": "\\bnot an? \\w+(?: \\w+)?\\.\\s+not an? \\w+(?: \\w+)?\\.\\s+(?:an?|the)\\b",
+  "weight": 2.0,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Series of negated fragments ending in the 'real' answer.",
+  "example": "Not a bug. Not a feature. A flaw."
+ },
+ {
+  "id": "self-posed-question",
+  "category": "structural",
+  "regex": "(?:^|[.!?]\\s+)(?:the (?:worst|best|real|catch|kicker|surprising) (?:part|thing|problem|twist)|the result|the answer|why does (?:this|it) matter)\\?\\s+\\S",
+  "weight": 1.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Question asked and immediately answered for drama.",
+  "example": "The worst part? Nobody noticed."
+ },
+ {
+  "id": "false-range",
+  "category": "structural",
+  "regex": "\\bfrom [^,.]{2,40} to [^,.]{2,40},? (?:and )?(?:from [^,.]{2,40} )?to [^,.]{2,40}",
+  "weight": 1.0,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "'From X to Y to Z' ranges that are not a real scale.",
+  "example": "From startups to enterprises to governments."
+ },
+ {
+  "id": "tricolon-abuse",
+  "category": "structural",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Rule-of-three lists used reflexively; count per 1k words rather than match.",
+  "example": "identity, payments, compute"
+ },
+ {
+  "id": "anaphora-abuse",
+  "category": "structural",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Repeated sentence openers; needs sentence-level statistics.",
+  "example": "They could... They could..."
+ },
+ {
+  "id": "false-suspense",
+  "category": "rhetorical",
+  "regex": "\\b(?:here'?s the (?:kicker|thing|catch|twist)|but here'?s the (?:thing|catch)|and then something (?:happened|changed))\\b",
+  "weight": 1.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Manufactured suspense before a point.",
+  "example": "Here's the kicker: nobody checked."
+ },
+ {
+  "id": "think-of-it-as",
+  "category": "rhetorical",
+  "regex": "\\b(?:think of it as|imagine a world where|picture this)\\b",
+  "weight": 1.2,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Analogy or hypothetical opener.",
+  "example": "Think of it as a calendar for your code."
+ },
+ {
+  "id": "stakes-inflation",
+  "category": "rhetorical",
+  "regex": "\\b(?:fundamentally (?:reshape|change|transform)|reshap(?:e|es|ing) (?:the future|everything)|changes? everything|redefin(?:e|es|ing) (?:the|what))\\b",
+  "weight": 1.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Inflated stakes for ordinary topics.",
+  "example": "This will fundamentally reshape how we work."
+ },
+ {
+  "id": "teacher-voice",
+  "category": "rhetorical",
+  "regex": "\\b(?:let'?s (?:break (?:this|it) down|unpack|dive in|dig in|explore)|let me (?:break|walk you through))\\b",
+  "weight": 1.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording); blader/humanizer — https://github.com/blader/humanizer (MIT)",
+  "explanation": "Explainer voice announcing its own explanation.",
+  "example": "Let's break this down."
+ },
+ {
+  "id": "truth-is-simple",
+  "category": "rhetorical",
+  "regex": "\\bthe (?:truth|answer|reality) is (?:simple|clear|plain)\\b",
+  "weight": 1.2,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Claims of simplicity before a pronouncement.",
+  "example": "The truth is simple: it works."
+ },
+ {
+  "id": "false-vulnerability",
+  "category": "rhetorical",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Staged confession or polished 'honest' admission; needs LLM or human judgement.",
+  "example": "I'll be honest, I almost gave up."
+ },
+ {
+  "id": "false-exclusivity",
+  "category": "rhetorical",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Claims of secret knowledge ('what nobody tells you'); judgement call.",
+  "example": "What nobody mentions is the cost."
+ },
+ {
+  "id": "invented-concept-labels",
+  "category": "rhetorical",
+  "regex": null,
+  "weight": 1.0,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Coined named phenomena presented as established ('the acceleration trap'); judgement call.",
+  "example": "the acceleration trap"
+ },
+ {
+  "id": "compliment-sandwich",
+  "category": "rhetorical",
+  "regex": null,
+  "weight": 0.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Praise-criticism-praise framing; judgement call.",
+  "example": "Great start! However... Overall excellent."
+ },
+ {
+  "id": "fake-casual-quotes",
+  "category": "rhetorical",
+  "regex": null,
+  "weight": 0.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Invented quotations in a casual register; judgement call.",
+  "example": "\"Honestly? It just works.\""
+ },
+ {
+  "id": "listicle-trench-coat",
+  "category": "document",
+  "regex": "\\bthe (?:first|second|third|fourth|final) (?:takeaway|lesson|point|insight|thing) is\\b",
+  "weight": 1.5,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Numbered list written out as prose.",
+  "example": "The second takeaway is simple."
+ },
+ {
+  "id": "one-line-fragments",
+  "category": "document",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Single-sentence paragraphs for punch; use paragraph-length distribution.",
+  "example": "Short. Punchy. Alone."
+ },
+ {
+  "id": "dead-metaphor-repetition",
+  "category": "document",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "One metaphor re-used throughout; n-gram repetition measure.",
+  "example": "the same river metaphor again"
+ },
+ {
+  "id": "one-point-dilution",
+  "category": "document",
+  "regex": null,
+  "weight": 0.8,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "One idea restated at length; judgement call.",
+  "example": "The same point in ten paragraphs."
+ },
+ {
+  "id": "historical-analogy-stacking",
+  "category": "document",
+  "regex": null,
+  "weight": 0.6,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Chain of historical comparisons; judgement call.",
+  "example": "Like the printing press, like the railway..."
+ },
+ {
+  "id": "low-burstiness",
+  "category": "document",
+  "regex": null,
+  "weight": 1.0,
+  "source": "Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
+  "explanation": "Uniform sentence lengths; statistic (stdev/mean of lengths).",
+  "example": "(statistical measure)"
+ },
+ {
+  "id": "low-lexical-diversity",
+  "category": "document",
+  "regex": null,
+  "weight": 1.0,
+  "source": "Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
+  "explanation": "Low MATTR lexical diversity; statistic.",
+  "example": "(statistical measure)"
+ },
+ {
+  "id": "trigram-repetition",
+  "category": "document",
+  "regex": null,
+  "weight": 1.0,
+  "source": "Aboudjem — https://github.com/Aboudjem/humanizer-skill (MIT)",
+  "explanation": "High repeated-trigram rate; statistic.",
+  "example": "(statistical measure)"
+ },
+ {
+  "id": "closing-offer",
+  "category": "chatbot_residue",
+  "regex": "\\b(?:would you like me to|shall i (?:continue|expand)|want me to (?:expand|elaborate))\\b",
+  "weight": 2.0,
+  "source": "FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT); blader/humanizer — https://github.com/blader/humanizer (MIT)",
+  "explanation": "Assistant offering follow-up work inside the text.",
+  "example": "Would you like me to expand on this?"
+ },
+ {
+  "id": "chatbot-certainly",
+  "category": "chatbot_residue",
+  "regex": "(?:^|\\n)\\s*(?:certainly|absolutely|sure thing|great question)[!,.]",
+  "weight": 2.0,
+  "source": "blader/humanizer — https://github.com/blader/humanizer (MIT); FeedHive — https://github.com/FeedHive/ai-slop-detector (MIT)",
+  "explanation": "Assistant-style opener.",
+  "example": "Certainly! Here is a draft."
+ },
+ {
+  "id": "sycophantic-opener",
+  "category": "chatbot_residue",
+  "regex": "\\b(?:what a (?:great|fascinating|excellent) (?:question|point)|you'?re absolutely right)\\b",
+  "weight": 2.0,
+  "source": "blader/humanizer — https://github.com/blader/humanizer (MIT); wsc — MIT-licensed deterministic rule detectors (see ATTRIBUTION.md)",
+  "explanation": "Sycophantic reply residue.",
+  "example": "You're absolutely right to ask."
+ },
+ {
+  "id": "emoji-headings",
+  "category": "formatting",
+  "regex": "(?m)^#{1,4}\\s*[\\U0001F300-\\U0001FAFF✅✨⭐]",
+  "weight": 1.0,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording); wsc — MIT-licensed deterministic rule detectors (see ATTRIBUTION.md)",
+  "explanation": "Emoji in headings.",
+  "example": "## 🚀 Getting started"
+ },
+ {
+  "id": "title-case-headings",
+  "category": "formatting",
+  "regex": null,
+  "weight": 0.4,
+  "source": "tropes.fyi — https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1 (own wording)",
+  "explanation": "Every word capitalised in headings; hard to regex without false positives.",
+  "example": "## The Future Of Modern Work"
+ }
+]
