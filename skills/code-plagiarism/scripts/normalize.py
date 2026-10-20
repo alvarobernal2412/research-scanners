@@ -1,19 +1,47 @@
 """Tokenising, normalisation and local comparison of source code.
 
-Tokeniser: a hand-written scanner loop over one joined text. Every regex used
-is a bounded single-class alternation (no nested quantifiers), so hostile input
+Tokeniser: a hand-written scanner loop over one joined text. Every regex is a
+bounded single-class alternation (no nested quantifiers), so hostile input
 (1 MB lines, unterminated strings or comments, deep brackets) stays linear.
 Comments are dropped; strings are single tokens; lines are 1-based.
 
-Comparison: k-gram hash index (not winnowing). The k-grams (K_GRAM) of the
-identifier/string/number-normalised stream of ``b`` go into a dict that keeps at
-most a few positions per k-gram, which bounds work on repetitive input. Every
-start position of ``a`` whose k-gram is in the index is "marked"; marked windows
-are merged into regions when the uncovered gap is at most MAX_GAP_TOKENS, and
-the longest region wins. The matching span in ``b`` comes from the occurrences
-nearest to a running diagonal (far outliers dropped), so a relocated
-common k-gram cannot inflate the span. Coverage is matched tokens divided by the
-longer of the two spans, so insertions on either side lower it.
+Comparison (``compare`` / ``compare_all``), as implemented:
+
+1. Anchors. Every K_GRAM-token window of the identifier/string/number-normalised
+   stream is hashed (collisions are re-checked on the token lists). An anchor is
+   a pair (i, j) of windows with the same k-gram in ``a`` and ``b``. K-grams
+   whose pair count (occurrences in a x occurrences in b) is above a cap are
+   boilerplate and are not anchored; the cap shrinks until the total anchor
+   count fits MAX_ANCHORS, which keeps work near-linear on low-variety input.
+2. Diagonal chaining. A chain is a sequence of anchors that strictly increase
+   in both ``a`` and ``b``. Between consecutive anchors the unmatched gap on
+   EACH side is at most MAX_GAP_TOKENS and the diagonal (j - i) drifts by at
+   most MAX_DIAG_DRIFT; overlapping windows must lie on the same diagonal. A
+   dynamic programme (same-diagonal predecessor first, otherwise a bounded
+   look-back) picks the chain with the most matched tokens, each exact raw-token
+   window counting double so a later verbatim copy beats an earlier renamed one.
+3. Spans come only from the chosen chain (first/last matched token on each
+   side, ``a_end``/``b_end`` exclusive). ``coverage`` = matched tokens /
+   max(a span, b span), so insertions on either side lower it equally and
+   compare(a, b) mirrors compare(b, a). ``LocalMatch.tokens`` is that longer
+   span length, not the matched count.
+4. Filters. Both spans need >= MIN_MATCH_TOKENS tokens and >= MIN_MATCH_LINES
+   lines, coverage >= NEAR_MIN_COVERAGE, and the region's k-gram variety
+   (distinct normalised k-grams / total, on either side) >= MIN_KGRAM_VARIETY
+   with >= MIN_DISTINCT_KGRAMS distinct ones; bean getters/setters, data tables
+   and ``__all__`` lists fail the variety test and are dropped.
+5. Type. ``exact``: the raw token texts of both spans are identical and
+   coverage >= FULL_COVERAGE; ``normalised``: identical only after renaming;
+   otherwise ``near``.
+6. ``compare_all`` repeats the chain search, masking each reported region's
+   anchors inside its (a span x b span) box, so several regions (swapped
+   functions, two copies in ``b``) are returned ordered by (a_start, b_start);
+   one ``a`` span may therefore pair with several ``b`` spans. ``compare``
+   returns the best region.
+
+Limits: a k-gram that is common in both files can relocate a chain only within
+MAX_DIAG_DRIFT; edits whose gap on either side exceeds MAX_GAP_TOKENS split the
+match into separate regions; heavily repeated k-grams never anchor.
 """
 from __future__ import annotations
 
@@ -26,17 +54,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 K_GRAM = 10
-MAX_GAP_TOKENS = 8
+MAX_GAP_TOKENS = 40     # ruling: raised from the plan's 8; applies to gaps in a and in b
+MAX_DIAG_DRIFT = 64
 MIN_MATCH_TOKENS = 40
 MIN_MATCH_LINES = 5
 FULL_COVERAGE = 0.9
 NEAR_MIN_COVERAGE = 0.5
-_MAX_POSITIONS = 8      # occurrences kept per k-gram in the index
-_MAX_DIAG_DRIFT = 256   # tokens a chosen occurrence may stray from the median diagonal
+MIN_KGRAM_VARIETY = 0.5
+MIN_DISTINCT_KGRAMS = 20
+MAX_ANCHORS = 250_000
+MAX_LOOKBACK_WORK = 3_000_000  # total look-back steps per compare() call (bounds hostile input)
+_PAIR_CAPS = (64, 32, 16, 8, 4, 2, 1)  # max a-occurrences x b-occurrences per anchored k-gram
 
 _KEYWORDS: dict[str, frozenset[str]] = {}
 _SCAN = re.compile(
-    r"(?P<nl>\n)|(?P<ws>[^\S\n]+)|(?P<id>[^\W\d][\w$]*|\$[\w$]*)|(?P<num>\d[\w.]*)|(?P<ch>.)",
+    r"(?P<nl>\n)|(?P<ws>[^\S\n]+)|(?P<id>[^\W\d][\w$]*|\$[\w$]*)|(?P<num>\d[\w.]*)|(?P<op2>\+\+|--|==|!=|<=|>=|&&|\|\||=>|->|::|\+=|-=|\*=|/=|<<|>>)|(?P<ch>.)",
     re.DOTALL)
 _STR_BODY = {
     q: re.compile(re.escape(q) + r"(?:[^" + re.escape(q) + r"\\\n]|\\.)*" + re.escape(q))
@@ -101,6 +133,8 @@ def tokenize(lines: list[str], lang: str) -> list[Token]:
             append(Token(word, "keyword" if word in kw else "ident", line))
         elif kind == "num":
             append(Token(m.group(), "number", line))
+        elif kind == "op2":
+            append(Token(m.group(), "op", line))
         else:
             c = text[pos]
             nxt = text[pos + 1] if pos + 1 < n else ""
@@ -155,76 +189,167 @@ def token_line_span(tokens: list[Token], start: int, end: int) -> tuple[int, int
     return (tokens[start].line, tokens[end - 1].line)
 
 
-def _kgrams(stream: list[str]) -> list[tuple[str, ...]]:
-    return [tuple(stream[i:i + K_GRAM]) for i in range(len(stream) - K_GRAM + 1)]
+
+
+def _hashes(stream: list[str]) -> list[int]:
+    return [hash(tuple(stream[i:i + K_GRAM])) for i in range(len(stream) - K_GRAM + 1)]
+
+
+def _anchors(ra, rb, na, nb, ha, hb):
+    """Shared k-gram windows (i, j, raw_equal), sorted by (i, j)."""
+    idx: dict[int, list[int]] = {}
+    for j, h in enumerate(hb):
+        idx.setdefault(h, []).append(j)
+    cnt: dict[int, int] = {}
+    for h in ha:
+        cnt[h] = cnt.get(h, 0) + 1
+    hist: dict[int, int] = {}  # pairs-per-kgram -> total pairs
+    for h, c in cnt.items():
+        lb = idx.get(h)
+        if lb:
+            p = c * len(lb)
+            hist[p] = hist.get(p, 0) + p
+    cap = 1  # unique-in-both k-grams always anchor
+    for cap in _PAIR_CAPS:
+        if sum(v for p, v in hist.items() if p <= cap) <= MAX_ANCHORS:
+            break
+    ai: list[int] = []
+    aj: list[int] = []
+    ar: list[bool] = []
+    for i, h in enumerate(ha):
+        lb = idx.get(h)
+        if lb is None or cnt[h] * len(lb) > cap:
+            continue
+        ki = na[i:i + K_GRAM]
+        for j in lb:
+            if nb[j:j + K_GRAM] != ki:  # hash collision
+                continue
+            ai.append(i)
+            aj.append(j)
+            ar.append(ra[i:i + K_GRAM] == rb[j:j + K_GRAM])
+    return ai, aj, ar
+
+
+def _best_chain(ai, aj, ar, nwa, nwb, work):
+    """Best-scoring anchor chain as (indexes, matched tokens), or None."""
+    n = len(ai)
+    if n == 0:
+        return None
+    starts = [0] * (nwa + 2)
+    p = 0
+    for x in range(nwa + 1):
+        while p < n and ai[p] < x:
+            p += 1
+        starts[x] = p
+    starts[nwa + 1] = n
+    width = nwb + 1
+    pos = {ai[k] * width + aj[k]: k for k in range(n)}
+    score = [0] * n
+    matched = [0] * n
+    prev = [-1] * n
+    window = K_GRAM + MAX_GAP_TOKENS
+    for k in range(n):
+        i, j = ai[k], aj[k]
+        w = 2 if ar[k] else 1  # exact raw-token windows count double
+        q = pos.get((i - 1) * width + j - 1)
+        if q is not None:  # continue the same diagonal
+            score[k], matched[k], prev[k] = score[q] + w, matched[q] + 1, q
+            continue
+        best, bm, bp = K_GRAM * w, K_GRAM, -1
+        lo = starts[max(i - window, 0)]
+        if work[0] >= k - lo:
+            work[0] -= k - lo
+            for q in range(k - 1, lo - 1, -1):
+                da = i - ai[q]
+                db = j - aj[q]
+                if da <= 0 or db <= 0:
+                    continue
+                if da == db:
+                    add = da if da < K_GRAM else K_GRAM
+                elif (da < K_GRAM or db < K_GRAM or da - K_GRAM > MAX_GAP_TOKENS
+                      or db - K_GRAM > MAX_GAP_TOKENS or abs(da - db) > MAX_DIAG_DRIFT):
+                    continue
+                else:
+                    add = K_GRAM
+                c = score[q] + add * w
+                if c > best:
+                    best, bm, bp = c, matched[q] + add, q
+        score[k], matched[k], prev[k] = best, bm, bp
+    end = max(range(n), key=score.__getitem__)
+    chain = []
+    k = end
+    while k != -1:
+        chain.append(k)
+        k = prev[k]
+    chain.reverse()
+    return chain, matched[end]
+
+
+def _variety_ok(hashes: list[int], start: int, end: int) -> bool:
+    window = hashes[start:end - K_GRAM + 1]
+    distinct = len(set(window))
+    return distinct >= MIN_DISTINCT_KGRAMS and distinct / max(len(window), 1) >= MIN_KGRAM_VARIETY
+
+
+def _regions(a: list[Token], b: list[Token], max_regions: int) -> list[LocalMatch]:
+    """Valid regions in the order they were found (best first)."""
+    if max_regions < 1 or len(a) < K_GRAM or len(b) < K_GRAM:
+        return []
+    ra, rb = normalise(a, False), normalise(b, False)
+    na, nb = normalise(a, True), normalise(b, True)
+    ha, hb = _hashes(na), _hashes(nb)
+    ai, aj, ar = _anchors(ra, rb, na, nb, ha, hb)
+    found: list[LocalMatch] = []
+    attempts = 0
+    work = [MAX_LOOKBACK_WORK]
+    while ai and len(found) < max_regions and attempts < max_regions + 3:
+        attempts += 1
+        res = _best_chain(ai, aj, ar, len(ha), len(hb), work)
+        if res is None:
+            break
+        chain, matched = res
+        a_s, a_e = ai[chain[0]], ai[chain[-1]] + K_GRAM
+        b_s, b_e = aj[chain[0]], aj[chain[-1]] + K_GRAM
+        keep = [k for k in range(len(ai))
+                if not (ai[k] < a_e and ai[k] + K_GRAM > a_s and aj[k] < b_e and aj[k] + K_GRAM > b_s)]
+        ai, aj, ar = [ai[k] for k in keep], [aj[k] for k in keep], [ar[k] for k in keep]
+        # A chance normalised k-gram can reach a few tokens past a verbatim copy;
+        # trim ends whose raw tokens differ (at most K_GRAM - 1 tokens per end).
+        for _ in range(K_GRAM - 1):
+            if a_s < a_e - 1 and b_s < b_e - 1 and ra[a_s] != rb[b_s]:
+                a_s, b_s, matched = a_s + 1, b_s + 1, matched - 1
+        for _ in range(K_GRAM - 1):
+            if a_s < a_e - 1 and b_s < b_e - 1 and ra[a_e - 1] != rb[b_e - 1]:
+                a_e, b_e, matched = a_e - 1, b_e - 1, matched - 1
+        a_len, b_len = a_e - a_s, b_e - b_s
+        if min(a_len, b_len) < MIN_MATCH_TOKENS:
+            continue
+        la, lb = token_line_span(a, a_s, a_e), token_line_span(b, b_s, b_e)
+        if min(la[1] - la[0], lb[1] - lb[0]) + 1 < MIN_MATCH_LINES:
+            continue
+        coverage = min(1.0, matched / max(a_len, b_len))
+        if coverage < NEAR_MIN_COVERAGE:
+            continue
+        if not (_variety_ok(ha, a_s, a_e) and _variety_ok(hb, b_s, b_e)):
+            continue
+        if any(a_s < m.a_end and m.a_start < a_e and b_s < m.b_end and m.b_start < b_e for m in found):
+            continue
+        mtype = "near"
+        if coverage >= FULL_COVERAGE and a_len == b_len:
+            if ra[a_s:a_e] == rb[b_s:b_e]:
+                mtype = "exact"
+            elif na[a_s:a_e] == nb[b_s:b_e]:
+                mtype = "normalised"
+        found.append(LocalMatch(mtype, a_s, a_e, b_s, b_e, max(a_len, b_len), round(coverage, 4)))
+    return found
+
+
+def compare_all(a: list[Token], b: list[Token], max_regions: int = 5) -> list[LocalMatch]:
+    """Up to ``max_regions`` regions, ordered by (a_start, b_start)."""
+    return sorted(_regions(a, b, max_regions), key=lambda m: (m.a_start, m.b_start))
 
 
 def compare(a: list[Token], b: list[Token]) -> LocalMatch | None:
-    if len(a) < K_GRAM or len(b) < K_GRAM:
-        return None
-    na, nb = normalise(a, True), normalise(b, True)
-    index: dict[tuple[str, ...], list[int]] = {}
-    gb = _kgrams(nb)
-    for j, g in enumerate(gb):
-        lst = index.setdefault(g, [])
-        if len(lst) < _MAX_POSITIONS:
-            lst.append(j)
-    ga = _kgrams(na)
-    marks = [(i, index[g]) for i, g in enumerate(ga) if g in index]
-    if not marks:
-        return None
-
-    # Merge marked windows into regions; keep the longest.
-    regions = []
-    r_lo, r_hi, first = marks[0][0], marks[0][0] + K_GRAM, 0
-    for idx in range(1, len(marks)):
-        i = marks[idx][0]
-        if i - r_hi <= MAX_GAP_TOKENS:
-            r_hi = i + K_GRAM
-        else:
-            regions.append((r_lo, r_hi, first, idx))
-            r_lo, r_hi, first = i, i + K_GRAM, idx
-    regions.append((r_lo, r_hi, first, len(marks)))
-    a_start, a_end, f, e = max(regions, key=lambda r: r[1] - r[0])
-    if a_end - a_start < MIN_MATCH_TOKENS:
-        return None
-    first_line, last_line = token_line_span(a, a_start, a_end)
-    if last_line - first_line + 1 < MIN_MATCH_LINES:
-        return None
-
-    # Follow one diagonal through b: reuse the running offset while b's k-gram
-    # there is identical, else take the nearest indexed occurrence (re-sync).
-    sel = marks[f:e]
-    votes: dict[int, int] = {}
-    for i, cs in sel[:64]:
-        votes[cs[0] - i] = votes.get(cs[0] - i, 0) + 1
-    diag = max(votes, key=votes.get)
-    kept: list[tuple[int, int]] = []
-    for i, cs in sel:
-        j = i + diag
-        if not (0 <= j < len(gb) and gb[j] == ga[i]):
-            j = min(cs, key=lambda x: abs(x - i - diag))
-            if abs(j - i - diag) > _MAX_DIAG_DRIFT:
-                continue
-            diag = j - i
-        kept.append((i, j))
-    if not kept:
-        return None
-    b_start = min(c for _, c in kept)
-    b_end = max(c for _, c in kept) + K_GRAM
-    covered = 0
-    prev_end = a_start
-    for i, _ in kept:
-        covered += i + K_GRAM - max(i, prev_end)
-        prev_end = i + K_GRAM
-    a_len, b_len = a_end - a_start, b_end - b_start
-    coverage = min(1.0, covered / max(a_len, b_len))
-    if coverage < NEAR_MIN_COVERAGE:
-        return None
-    mtype = "near"
-    if coverage >= FULL_COVERAGE and a_len == b_len:
-        if normalise(a[a_start:a_end], False) == normalise(b[b_start:b_end], False):
-            mtype = "exact"
-        elif na[a_start:a_end] == nb[b_start:b_end]:
-            mtype = "normalised"
-    return LocalMatch(mtype, a_start, a_end, b_start, b_end, covered, round(coverage, 4))
+    """The best region (most matched, exact-weighted tokens), or None."""
+    found = _regions(a, b, 1)
+    return found[0] if found else None
