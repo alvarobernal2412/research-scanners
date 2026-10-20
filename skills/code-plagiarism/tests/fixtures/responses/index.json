@@ -1,1 +1,36 @@
-{}
+{
+  "POST https://api.clearlydefined.io/definitions aabb000f649e3a71261a2e6e567cc6e5292e7da66ad6815537af567d0404ceec": {
+    "file": "7f36c03800c8df50.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-RAY": "a4d9ec9f5d18ff00-ZRH",
+      "Connection": "close",
+      "Content-Security-Policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+      "Content-Type": "application/json; charset=utf-8",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "Date": "Tue, 20 Oct 2026 18:00:50 GMT",
+      "ETag": "W/\"ab7-ewtxHVkgqX0KWZvQKtcPTrzN5tE\"",
+      "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "Origin-Agent-Cluster": "?1",
+      "RateLimit-Limit": "250",
+      "RateLimit-Policy": "250;w=60",
+      "RateLimit-Remaining": "249",
+      "RateLimit-Reset": "60",
+      "Referrer-Policy": "no-referrer",
+      "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=PWI39mOLQPZ75hjCKfSYuof6YIRBEmn3Y1YoqgCvJ3uEfgvGNK4acIW%2B7VRfiKhWxa87%2BNU8Ny0R8CWSFcqA92qeVXmuNWqQvODSyxEbKaWDA6KvYlLeZfctcq6LZ6%2B1GE0YTiuu8Fs%3D\"}]}",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-DNS-Prefetch-Control": "off",
+      "X-Download-Options": "noopen",
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-Permitted-Cross-Domain-Policies": "none",
+      "X-Request-ID": "c99d2f7e-a3a8-43c7-8181-638629dcba2d",
+      "X-XSS-Protection": "0",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cf-cache-status": "DYNAMIC"
+    },
+    "status": 200
+  }
+}

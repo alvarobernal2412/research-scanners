@@ -150,7 +150,7 @@ def _content_skip_reason(path: Path) -> str | None:
     return None
 
 
-def inventory(root: Path) -> Inventory:
+def inventory(root: Path, require_sources: bool = True) -> Inventory:
     root = Path(root)
     if not root.is_dir():
         raise InventoryError("not_a_directory", f"not a directory: {root}")
@@ -221,7 +221,7 @@ def inventory(root: Path) -> Inventory:
             inv.skipped.append(Skipped(rel, reason))
             continue
         inv.sources.append(SourceFile(rel, path, LANGUAGES[ext], size))
-    if not inv.sources:
+    if require_sources and not inv.sources:
         raise InventoryError("no_source_files", f"no source files under {root}")
     return inv
 
