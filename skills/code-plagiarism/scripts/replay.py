@@ -1,7 +1,6 @@
 """Record/replay helpers so tests never touch the network."""
 from __future__ import annotations
 
-import gzip
 import hashlib
 import io
 import json
@@ -12,7 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-_KEY_PARAM = re.compile(r"(?<=[?&])key=[^&]*&?")
+import net  # noqa: E402
+
+_KEY_PARAM = re.compile(r"(?<=[?&])(?:access_|api_)?key=[^&]*&?", re.I)
 
 
 def _strip_key(url: str) -> str:
@@ -31,8 +32,8 @@ class _Resp:
     def __init__(self, url, status, headers, body):
         self.url, self.status, self.headers, self._body = url, status, dict(headers), body
 
-    def read(self):
-        return self._body
+    def read(self, n=-1):
+        return self._body if n is None or n < 0 else self._body[:n]
 
     def getcode(self):
         return self.status
@@ -66,7 +67,10 @@ class ReplayOpener:
         entry = self.index.get(key)
         if entry is None:
             raise urllib.error.URLError("unrecorded")
-        data = (self.dir / entry["file"]).read_bytes()
+        target = (self.dir / entry["file"]).resolve()
+        if not target.is_relative_to(self.dir.resolve()):
+            raise urllib.error.URLError("index entry points outside the responses directory")
+        data = target.read_bytes()
         status, headers = int(entry["status"]), entry.get("headers", {})
         if status >= 300:
             raise urllib.error.HTTPError(url, status, "recorded", headers, io.BytesIO(data))
@@ -98,7 +102,7 @@ class RecordingOpener:
     def _plain(headers, body):
         headers = dict(headers)
         if any(k.lower() == "content-encoding" and str(v).lower() == "gzip" for k, v in headers.items()):
-            body = gzip.decompress(body)
+            body = net.gunzip_bounded(body)
         return headers, body
 
     def open(self, req, timeout=None):
@@ -109,11 +113,11 @@ class RecordingOpener:
         try:
             r = call(req, timeout=timeout)
         except urllib.error.HTTPError as exc:
-            headers, data = self._plain(dict(exc.headers or {}), exc.read())
+            headers, data = self._plain(dict(exc.headers or {}), exc.read(net.MAX_RESPONSE_BYTES + 1))
             self._record(key, exc.code, headers, data)
             raise urllib.error.HTTPError(url, exc.code, exc.msg, headers, io.BytesIO(data)) from None
         status = getattr(r, "status", None) or r.getcode()
-        headers, data = self._plain(dict(r.headers.items()), r.read())
+        headers, data = self._plain(dict(r.headers.items()), r.read(net.MAX_RESPONSE_BYTES + 1))
         self._record(key, int(status), headers, data)
         return _Resp(url, int(status), {k: v for k, v in headers.items() if k.lower() != "content-encoding"}, data)
 
