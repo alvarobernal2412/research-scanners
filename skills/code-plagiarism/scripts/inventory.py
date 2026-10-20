@@ -1,4 +1,8 @@
-"""File inventory: decide which files in a project are eligible source."""
+"""File inventory: decide which files in a project are eligible source.
+
+Skip reasons: binary, too_large, vendored, generated, minified, sensitive,
+unreadable, not_source, gitignored, non_utf8.
+"""
 from __future__ import annotations
 
 import json
@@ -26,10 +30,9 @@ LANGUAGES = {
     **{e: "hash" for e in ("py", "rb", "sh", "r", "pl")},
 }
 
-_SENSITIVE_NAME = re.compile(
-    r"^(\.env(\..*)?|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.npmrc|\.netrc|credentials(\..*)?)$",
-    re.IGNORECASE,
-)
+# Case-insensitive prefixes on the base name only (leading dot required for .env).
+_SENSITIVE_PREFIXES = (".env", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
+                       ".npmrc", ".netrc", "credentials", "secrets")
 _SENSITIVE_EXT = {".pem", ".key", ".p12", ".pfx", ".keystore", ".jks"}
 _LICENSE_NAME = re.compile(r"^(licen[sc]e|copying|unlicense|notice)(\.[A-Za-z0-9]+)?$", re.IGNORECASE)
 _SUPPORTED_MANIFESTS = {
@@ -122,7 +125,8 @@ def _walk_list(root: Path) -> list[str]:
 
 
 def _is_sensitive(name: str) -> bool:
-    return bool(_SENSITIVE_NAME.match(name)) or Path(name).suffix.lower() in _SENSITIVE_EXT
+    low = name.lower()
+    return low.startswith(_SENSITIVE_PREFIXES) or Path(low).suffix in _SENSITIVE_EXT
 
 
 def _content_skip_reason(path: Path) -> str | None:
@@ -133,7 +137,11 @@ def _content_skip_reason(path: Path) -> str | None:
         return "unreadable"
     if b"\0" in data[:8192]:
         return "binary"
-    lines = _LINE_SPLIT.split(data.decode("utf-8-sig", errors="replace"))
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return "non_utf8"
+    lines = _LINE_SPLIT.split(text)
     if path.name.lower().endswith(".min.js") or any(len(l) > MINIFIED_LINE_CHARS for l in lines):
         return "minified"
     head = "\n".join(lines[:5])
