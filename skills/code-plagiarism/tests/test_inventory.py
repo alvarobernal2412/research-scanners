@@ -77,10 +77,38 @@ def test_crlf_bom_and_lone_cr_line_numbers(tmp_path):
     assert read_lines(p) == ["one", "two", "three", "four"]
 
 
-def test_non_utf8_file_read_with_replacement(tmp_path):
+def test_non_utf8_file_skipped_with_reason(tmp_path):
+    w(tmp_path, "ok.py")
+    w(tmp_path, "bad.py", "caf\xe9 = 1\n".encode("latin-1"))
+    w(tmp_path, "bom.py", b"\xef\xbb\xbfx = 1\n")
+    inv = inventory(tmp_path)
+    assert reasons(inv)["bad.py"] == "non_utf8"
+    assert "bom.py" in [s.rel for s in inv.sources]
+
+
+def test_read_lines_tolerates_bad_bytes(tmp_path):
     p = w(tmp_path, "a.py", "caf\xe9 = 1\n".encode("latin-1"))
     lines = read_lines(p)
     assert len(lines) == 1 and "caf" in lines[0]
+
+
+@pytest.mark.parametrize("name", [
+    "secrets.py", "credentials_x.py", ".envrc", ".env_local.sh", "id_rsa.bak",
+    "secrets.yml", "credentials_prod.json", "Secrets.PY", "a.p12", "a.key", "a.jks"])
+def test_sensitive_name_variants(tmp_path, name):
+    w(tmp_path, "ok.py")
+    w(tmp_path, name, "x = 1\n")
+    inv = inventory(tmp_path)
+    assert reasons(inv)[name] == "sensitive"
+    assert name not in [s.rel for s in inv.sources]
+
+
+def test_sensitive_does_not_overmatch(tmp_path):
+    for n in ("secret_santa.py", "environment.py", "rsa_utils.py", "secrets_docs/readme.md"):
+        w(tmp_path, n, "x = 1\n")
+    inv = inventory(tmp_path)
+    assert {s.rel for s in inv.sources} == {"secret_santa.py", "environment.py", "rsa_utils.py"}
+    assert reasons(inv)["secrets_docs/readme.md"] == "not_source"
 
 
 def test_resolve_includes_backslash_and_outside_root(tmp_path):
