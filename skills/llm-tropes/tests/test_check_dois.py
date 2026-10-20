@@ -5,6 +5,8 @@ import sys
 import urllib.error
 from pathlib import Path
 
+import pytest
+
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
@@ -65,15 +67,28 @@ def test_resolve_ok_returns_title():
     assert r["status"] == "ok" and r["title"] == "A Title"
 
 
-def test_offline_makes_no_requests(tmp_path, monkeypatch, capsys):
+def _tripwire(monkeypatch):
     def boom(*a, **k):
         raise AssertionError("network used")
 
+    monkeypatch.setattr(check_dois, "resolve", boom)
     monkeypatch.setattr(check_dois.urllib.request, "urlopen", boom)
+
+
+def test_offline_makes_no_requests(tmp_path, monkeypatch, capsys):
+    _tripwire(monkeypatch)
     f = tmp_path / "d.md"
     f.write_text("10.1000/x", encoding="utf-8")
     assert check_dois.main([str(f), "--offline"]) == 0
     assert json.loads(capsys.readouterr().out) == {"skipped": "offline"}
+
+
+def test_tripwire_fires_without_offline(tmp_path, monkeypatch):
+    _tripwire(monkeypatch)
+    f = tmp_path / "d.md"
+    f.write_text("10.1000/x", encoding="utf-8")
+    with pytest.raises(AssertionError, match="network used"):
+        check_dois.main([str(f)])
 
 
 def test_request_url_contains_only_doi():

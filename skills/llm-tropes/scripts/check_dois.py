@@ -63,7 +63,9 @@ def _retry_after(err: urllib.error.HTTPError) -> float:
     return max(0.0, min(value, MAX_RETRY_AFTER))
 
 
-def resolve(doi: str, opener=urllib.request.urlopen) -> dict:
+def resolve(doi: str, opener=None) -> dict:
+    if opener is None:
+        opener = urllib.request.urlopen
     result = {"doi": doi, "status": "error", "title": None}
     url = API + urllib.parse.quote(doi, safe="/")
     for attempt in range(MAX_RETRIES + 1):
