@@ -1,0 +1,65 @@
+{
+  "_note": "Approximation of commonly published interpretations (FSF license list and GPL compatibility notes, SPDX, Apache Software Foundation licensing howto, MPL 2.0 FAQ). It is not legal advice. Each rule says which PROJECT licenses may include a DEPENDENCY under that license when the combined work is distributed.",
+  "groups": {
+    "gpl2_family": ["GPL-2.0-only", "GPL-2.0-or-later"],
+    "gpl3_family": ["GPL-3.0-only", "GPL-3.0-or-later"],
+    "agpl_family": ["AGPL-3.0-only", "AGPL-3.0-or-later"],
+    "gpl_any": ["GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later"],
+    "lgpl_any": ["LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later"]
+  },
+  "categories": {
+    "permissive": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "Zlib", "Unlicense", "CC0-1.0", "PSF-2.0", "Python-2.0", "BSL-1.0", "BlueOak-1.0.0", "HPND", "Unicode-DFS-2016", "Artistic-2.0", "CC-BY-4.0", "OFL-1.1", "WTFPL"],
+    "weak_copyleft": ["LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later", "MPL-2.0", "MPL-1.1", "EPL-1.0", "EPL-2.0", "CDDL-1.0"],
+    "strong_copyleft": ["GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "CC-BY-SA-4.0"],
+    "network_copyleft": ["AGPL-3.0-only", "AGPL-3.0-or-later"],
+    "non_free": ["CC-BY-NC-4.0", "SSPL-1.0", "BUSL-1.1", "LicenseRef-Proprietary"]
+  },
+  "candidates": ["Apache-2.0", "MIT", "BSD-3-Clause", "MPL-2.0", "LGPL-3.0-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later", "AGPL-3.0-or-later"],
+  "candidate_notes": {
+    "Apache-2.0": "permissive with an explicit patent grant; preferred when several permissive licenses are usable",
+    "MIT": "permissive and short",
+    "BSD-3-Clause": "permissive with a non-endorsement clause",
+    "MPL-2.0": "file-level copyleft",
+    "LGPL-3.0-or-later": "library copyleft",
+    "GPL-2.0-or-later": "strong copyleft",
+    "GPL-3.0-or-later": "strong copyleft",
+    "AGPL-3.0-or-later": "strong copyleft that also covers network use"
+  },
+  "rules": {
+    "permissive": {"allowed_projects": "any", "conditions": ["keep the copyright and license notice"]},
+    "Apache-2.0": {"allowed_projects": "any", "not_allowed_projects": ["GPL-2.0-only", "LGPL-2.1-only"], "conditions": ["keep the license and NOTICE file", "state changes"], "why": "Apache-2.0 is not compatible with GPL-2.0-only (patent and indemnity terms)"},
+    "BSD-4-Clause": {"allowed_projects": "any", "not_allowed_projects": ["@gpl_any"], "conditions": ["advertising clause"], "why": "the advertising clause is incompatible with the GPL"},
+    "CC-BY-SA-4.0": {"allowed_projects": ["CC-BY-SA-4.0", "@gpl3_family", "@agpl_family"], "conditions": ["share alike"], "why": "CC-BY-SA-4.0 is one-way compatible with GPL-3.0 only; it is meant for content, not code"},
+    "LGPL-2.1-only": {"allowed_projects": "any", "conditions": ["allow relinking or replacing the library", "provide the library source"]},
+    "LGPL-2.1-or-later": {"allowed_projects": "any", "conditions": ["allow relinking or replacing the library", "provide the library source"]},
+    "LGPL-3.0-only": {"allowed_projects": "any", "not_allowed_projects": ["GPL-2.0-only", "LGPL-2.1-only"], "conditions": ["allow relinking or replacing the library", "provide the library source"], "why": "LGPL-3.0 builds on GPL-3.0 terms that GPL-2.0-only cannot absorb"},
+    "LGPL-3.0-or-later": {"allowed_projects": "any", "not_allowed_projects": ["GPL-2.0-only", "LGPL-2.1-only"], "conditions": ["allow relinking or replacing the library", "provide the library source"], "why": "LGPL-3.0 builds on GPL-3.0 terms that GPL-2.0-only cannot absorb"},
+    "MPL-2.0": {"allowed_projects": "any", "conditions": ["keep MPL-covered files under MPL-2.0 and publish their source"]},
+    "MPL-1.1": {"allowed_projects": "any", "not_allowed_projects": ["@gpl_any"], "conditions": ["keep MPL-covered files under MPL-1.1"], "why": "MPL-1.1 is not GPL compatible"},
+    "EPL-1.0": {"allowed_projects": "any", "not_allowed_projects": ["@gpl_any"], "conditions": ["keep EPL-covered files under EPL"], "why": "EPL is not GPL compatible unless a secondary license applies"},
+    "EPL-2.0": {"allowed_projects": "any", "not_allowed_projects": ["@gpl_any"], "conditions": ["keep EPL-covered files under EPL"], "why": "EPL-2.0 is GPL compatible only when the work declares the GPL as secondary license"},
+    "CDDL-1.0": {"allowed_projects": "any", "not_allowed_projects": ["@gpl_any"], "conditions": ["keep CDDL-covered files under CDDL"], "why": "CDDL-1.0 is not GPL compatible"},
+    "GPL-2.0-only": {"allowed_projects": ["GPL-2.0-only", "GPL-2.0-or-later"], "why": "GPL-2.0-only code can only join works distributed under GPL-2.0", "conditions": ["distribute the whole work under GPL-2.0 and provide source"]},
+    "GPL-2.0-or-later": {"allowed_projects": ["@gpl2_family", "@gpl3_family", "@agpl_family"], "why": "GPL code requires the combined work to be GPL-licensed", "conditions": ["distribute the whole work under the GPL and provide source"]},
+    "GPL-3.0-only": {"allowed_projects": ["@gpl3_family", "@agpl_family"], "why": "GPL-3.0 code requires the combined work to be GPL-3.0 or AGPL-3.0", "conditions": ["distribute the whole work under GPL-3.0 and provide source"]},
+    "GPL-3.0-or-later": {"allowed_projects": ["@gpl3_family", "@agpl_family"], "why": "GPL-3.0 code requires the combined work to be GPL-3.0 or AGPL-3.0", "conditions": ["distribute the whole work under GPL-3.0 and provide source"]},
+    "AGPL-3.0-only": {"allowed_projects": ["@agpl_family"], "why": "AGPL-3.0 code requires the combined work to be AGPL-3.0", "conditions": ["offer source to network users"]},
+    "AGPL-3.0-or-later": {"allowed_projects": ["@agpl_family"], "why": "AGPL-3.0 code requires the combined work to be AGPL-3.0", "conditions": ["offer source to network users"]}
+  },
+  "needs_review": {
+    "CC-BY-NC-4.0": "non-commercial restriction; not an open source license",
+    "SSPL-1.0": "source-available, not OSI approved",
+    "BUSL-1.1": "source-available with a usage restriction",
+    "LicenseRef-Proprietary": "proprietary or custom terms"
+  },
+  "exceptions": {
+    "Classpath-exception-2.0": "permits linking without the GPL spreading; treated as library-style terms",
+    "LLVM-exception": "permits use in GPL-2.0 projects",
+    "GCC-exception-3.1": "permits use of runtime library in any program"
+  },
+  "exception_effect": {
+    "Classpath-exception-2.0": {"allowed_projects": "any", "conditions": ["keep the license and exception text"]},
+    "LLVM-exception": {"allowed_projects": "any", "conditions": ["keep the license and exception text"]},
+    "GCC-exception-3.1": {"allowed_projects": "any", "conditions": ["keep the license and exception text"]}
+  }
+}
