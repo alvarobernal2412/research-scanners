@@ -1,14 +1,16 @@
 # research-scanners
 
-Three Agent Skills for checking research writing and code, built for use with Claude Code and other agents that read `SKILL.md` skills. All three report **evidence only**: no accusation, no legal verdict, and no claim about who wrote something.
+Five Agent Skills for checking research writing, code and references, built for use with Claude Code and other agents that read `SKILL.md` skills. All three report **evidence only**: no accusation, no legal verdict, and no claim about who wrote something.
 
 | Skill | What it does | Status |
 |---|---|---|
 | [`llm-tropes`](skills/llm-tropes/README.md) | Flags stylistic tells of LLM-written text, with line numbers and sources | Ready |
 | [`code-plagiarism`](skills/code-plagiarism/README.md) | Finds code copied from Stack Overflow and open-source projects, with origin and license evidence | In development (hidden from installs) |
 | [`text-plagiarism`](skills/text-plagiarism/README.md) | Finds passages copied verbatim from published papers and books, with source and attribution status | Planned (hidden from installs) |
+| [`license-compliance`](skills/license-compliance/README.md) | Checks that your dependencies' licenses are compatible with your project's license; recommends a license, and lists the ones ruled out, when you have none | Ready |
+| [`reference-check`](skills/reference-check/README.md) | Checks that every reference in a paper exists and matches the real record (authors, title, year, venue, DOI) | Ready |
 
-The unfinished skills are marked `metadata.internal: true`, so installing "all skills" should today install only the finished one (per the CLI documentation, internal skills are hidden unless `INSTALL_INTERNAL_SKILLS=1` is set). When a skill is ready, that flag is removed and the same install command picks it up.
+The unfinished skills are marked `metadata.internal: true`, so installing "all skills" should today install only the finished ones (per the CLI documentation, internal skills are hidden unless `INSTALL_INTERNAL_SKILLS=1` is set). When a skill is ready, that flag is removed and the same install command picks it up.
 
 ## Install
 
@@ -40,7 +42,7 @@ Developing locally instead? Clone the repository and run `python tests/run_all.p
 
 ## How they work
 
-All three skills are instructions (`SKILL.md`) plus local Python scripts. Claude runs the scripts, reads their JSON output and writes the report. The two plagiarism skills can talk to public services, so they share one privacy rule: **nothing derived from your work leaves your machine unless you approved the exact request.**
+All five skills are instructions (`SKILL.md`) plus local Python scripts. Claude runs the scripts, reads their JSON output and writes the report. The two plagiarism skills can talk to public services, so they share one privacy rule: **nothing derived from your work leaves your machine unless you approved the exact request.**
 
 ```mermaid
 flowchart TD
@@ -96,6 +98,7 @@ sequenceDiagram
 
 Notes:
 
+- `license-compliance` sends only PyPI or npm package names and versions (never git, path or URL packages), and `reference-check` sends only the bibliographic metadata of the works you cite (DOI, title, first authors, year), never the paper's text. Both list every request in their output and have an `--offline` mode. Neither needs the approval step, because nothing derived from your own text or code is sent.
 - `llm-tropes` is fully offline. Its only optional network step checks cited DOIs against Crossref and sends nothing but the DOIs.
 - The scripts cannot tell you from Claude: approval is relayed by Claude and also guarded by Claude Code's own permission prompt for running the script. The guarantee covers requests made by the skills' scripts; text that Claude reads is already in the model's context.
 - Strict tier is the default for both plagiarism skills. It finds less by design and says what it could not check.
