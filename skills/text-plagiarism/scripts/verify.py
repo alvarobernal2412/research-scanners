@@ -22,13 +22,18 @@ from attribute import doi_key  # noqa: E402
 from compare import find_matches  # noqa: E402
 from extract import ExtractError, Line, extract_bytes, jats_info  # noqa: E402
 from findings import SourceRec, compare_sources, state_entries  # noqa: E402
+from prepare import load_doc  # noqa: E402
 from net import Response, cache_root  # noqa: E402
 from open_tier import Candidate, load_open_state  # noqa: E402
-from textnorm import GLUED_MAX_RATIO, glued_ratio, tokenize  # noqa: E402
+from textnorm import GLUED_MAX_RATIO, glued_ratio, split_sentences, tokenize  # noqa: E402
 
 VERIFY_MIN_RUN_WORDS = 8
 VERIFY_MIN_FRACTION = 0.8
 BOILERPLATE_MIN_SEARCH_HITS = 5
+BOILERPLATE_INSIDE_FRACTION = 0.8
+# Only a phrase search counts documents. OpenAlex search is stemmed and relevance-ranked, CORE and the web
+# engines count loosely matching pages: those counts say nothing about how many documents contain the sentence.
+DOC_COUNT_BACKENDS = frozenset({"europepmc"})
 
 
 def _url_id(url: str) -> str:
@@ -132,11 +137,12 @@ def open_findings(workdir: Path) -> dict:
     unverified: list[dict] = []
     seen_unverified: set[tuple] = set()
     high_hit: dict[str, int] = {}
+    verified: dict[str, list[str]] = {}
     for key, q, res, h in _all_hits(state):
         cand = cands.get(q.get("candidate"))
         if cand is None:
             continue
-        if (res.get("hit_count") or 0) >= BOILERPLATE_MIN_SEARCH_HITS:
+        if (res.get("hit_count") or 0) >= BOILERPLATE_MIN_SEARCH_HITS and q.get("backend", h.get("backend")) in DOC_COUNT_BACKENDS:
             high_hit[cand.id] = max(high_hit.get(cand.id, 0), res["hit_count"])
         lines, lic, reason = _hit_lines(h, fetched)
         if lines is None:
@@ -150,6 +156,7 @@ def open_findings(workdir: Path) -> dict:
         if verify_sentence(cand, lines) is None:
             continue
         rid = (h.get("doi") or h.get("fulltext_url") or h.get("url") or "").lower() or f"{h.get('backend')}:{key}"
+        verified.setdefault(rid, []).append(cand.id)
         if rid in recs:
             continue
         keys = set()
@@ -163,25 +170,30 @@ def open_findings(workdir: Path) -> dict:
         recs[rid] = SourceRec(id=rid, lines=lines, doi=h.get("doi"), title=h.get("title"),
                               url=h.get("url") or h.get("fulltext_url"), license=lic or h.get("license"),
                               found_via=f"open:{h.get('backend')}", source_keys=frozenset(keys), ref_n=ref_n)
-    # a verified hit is reported from the verification threshold (8 words), not the stricter 12-word default
-    result = compare_sources(workdir, list(recs.values()), VERIFY_MIN_RUN_WORDS) if recs else dict(empty)
+    spans = _candidate_spans(workdir, cands)
+    anchors = {rid: [spans[c] for c in ids if c in spans] for rid, ids in verified.items()}
+    # 8 words suffice only where the hit verified a candidate sentence; elsewhere the usual 12-word default
+    result = (compare_sources(workdir, list(recs.values()), anchors=anchors, anchor_min_words=VERIFY_MIN_RUN_WORDS,
+                              with_spans=True) if recs else dict(empty))
     # a sentence that many independent documents contain is common phrasing, not a copy of one of them
     if high_hit:
-        spans = [(cands[c].line_start, cands[c].line_end, n) for c, n in high_hit.items()]
-        keep = []
+        stock = {cid: spans[cid] for cid in high_hit if cid in spans}
+        stock_tokens = {i for lo, hi in stock.values() for i in range(lo, hi)}
         for name in ("findings", "informational"):
             keep = []
             for f in result[name]:
-                lo, hi = f["location"]["line_start"], f["location"]["line_end"]
-                if any(lo <= e and hi >= s for s, e, _ in spans):
-                    result["boilerplate"].append(f)
+                lo, hi = f["_span"]
+                inside = sum(1 for i in range(lo, hi) if i in stock_tokens)
+                if hi > lo and inside / (hi - lo) >= BOILERPLATE_INSIDE_FRACTION:
+                    result["boilerplate"].append(f)       # the finding is (inside) the stock sentence itself
                 else:
                     keep.append(f)
             result[name] = keep
-        covered = {(f["location"]["line_start"], f["location"]["line_end"]) for f in result["boilerplate"]}
+        covered = [f["_span"] for f in result["boilerplate"]]
         for cid, n in high_hit.items():
             c = cands[cid]
-            if not any(c.line_start <= e and c.line_end >= s for s, e in covered):
+            lo, hi = stock.get(cid, (0, 0))
+            if not any(lo < e and s < hi for s, e in covered):
                 result["boilerplate"].append({"id": "", "passage": c.text, "search_hit_count": n,
                                               "location": {"section": c.section_id, "line_start": c.line_start,
                                                            "line_end": c.line_end, "page": None},
@@ -191,5 +203,25 @@ def open_findings(workdir: Path) -> dict:
         for name, prefix in (("findings", "f"), ("informational", "i")):
             for n, f in enumerate(result[name], 1):
                 f["id"] = f"{prefix}{n}"
+    for name in ("findings", "informational", "boilerplate"):
+        for f in result[name]:
+            f.pop("_span", None)
     result["unverified_candidates"] = unverified
     return result
+
+
+def _candidate_spans(workdir: Path, cands: dict) -> dict[str, tuple[int, int]]:
+    """Document token range of each candidate sentence."""
+    doc, _, _ = load_doc(workdir)
+    tokens = tokenize(doc.lines)
+    sentences = split_sentences(doc.lines, tokens)
+    by_pos = {(s.line_start, s.line_end, s.text): (s.start_tok, s.end_tok) for s in sentences}
+    out = {}
+    for cid, c in cands.items():
+        span = by_pos.get((c.line_start, c.line_end, c.text))
+        if span is None:       # the sentence list changed shape: fall back to the sentence on the same line
+            span = next(((s.start_tok, s.end_tok) for s in sentences
+                         if s.line_start == c.line_start and s.text.startswith(c.text[:30])), None)
+        if span is not None:
+            out[cid] = span
+    return out
