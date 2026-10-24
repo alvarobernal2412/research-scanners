@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from acquire import SourceInfo, load_source_lines  # noqa: E402
 from attribute import Attribution, arxiv_key, classify, doi_key, find_citations, quote_mask  # noqa: E402
-from compare import Match, SourceIndex  # noqa: E402
+from compare import MIN_MATCH_WORDS, Match, SourceIndex  # noqa: E402
 from extract import Document, Line  # noqa: E402
 from prepare import load_doc  # noqa: E402
 from refs import RefEntry  # noqa: E402
@@ -85,7 +85,7 @@ def _overlap(a: tuple[int, int], b: tuple[int, int]) -> int:
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
 
 
-def compare_sources(workdir: Path, recs: list[SourceRec]) -> dict:
+def compare_sources(workdir: Path, recs: list[SourceRec], min_words: int = MIN_MATCH_WORDS) -> dict:
     doc, sections, _ = load_doc(workdir)
     tokens = tokenize(doc.lines)
     excluded = excluded_lines(doc, sections)
@@ -98,7 +98,7 @@ def compare_sources(workdir: Path, recs: list[SourceRec]) -> dict:
     for rec in recs:
         by_id[rec.id] = rec
         index.add(rec.id, [t.key for t in tokenize(rec.lines)])
-    found = index.find(keys)
+    found = index.find(keys, min_words)
     entries: list[tuple[SourceRec, Match]] = [(by_id[sid], m) for sid, ms in found.items() for m in ms]
     entries.sort(key=lambda e: (e[1].doc_start, e[0].id))
     result = {"findings": [], "informational": [], "boilerplate": [], "sources_compared": [

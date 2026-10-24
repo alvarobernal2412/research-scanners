@@ -163,7 +163,8 @@ def open_findings(workdir: Path) -> dict:
         recs[rid] = SourceRec(id=rid, lines=lines, doi=h.get("doi"), title=h.get("title"),
                               url=h.get("url") or h.get("fulltext_url"), license=lic or h.get("license"),
                               found_via=f"open:{h.get('backend')}", source_keys=frozenset(keys), ref_n=ref_n)
-    result = compare_sources(workdir, list(recs.values())) if recs else dict(empty)
+    # a verified hit is reported from the verification threshold (8 words), not the stricter 12-word default
+    result = compare_sources(workdir, list(recs.values()), VERIFY_MIN_RUN_WORDS) if recs else dict(empty)
     # a sentence that many independent documents contain is common phrasing, not a copy of one of them
     if high_hit:
         spans = [(cands[c].line_start, cands[c].line_end, n) for c, n in high_hit.items()]

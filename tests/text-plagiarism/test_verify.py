@@ -174,3 +174,14 @@ def test_verify_sentence_thresholds():
     assert verify_sentence(cand, seven) is None
     eight = [Line(1, "alpha beta gamma delta epsilon zeta eta theta other words here")]
     assert verify_sentence(cand, eight).longest_run == 8
+
+
+def test_verified_short_overlap_is_reported_from_eight_words(tmp_path):
+    sentence = ("Quasar harvesting techniques rely on gravitational lenses instead of expensive orbital mirrors "
+                "according to our fictional survey of the field.")
+    wd = run_open(tmp_path, f"# Introduction\n\n{sentence}\n", include="c1")
+    hit = fake_hit(full_text="Other words. Quasar harvesting techniques rely on gravitational lenses instead of "
+                             "something else entirely. More words.")
+    synthetic_state(wd, sentence, hit)
+    [f] = open_findings(wd)["findings"]
+    assert f["overlap_words"] == 9 and f["source"]["found_via"] == "open:europepmc"
