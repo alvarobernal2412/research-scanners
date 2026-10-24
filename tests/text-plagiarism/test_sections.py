@@ -78,3 +78,35 @@ def test_tex_bibliography_environment_is_references():
     tex = "\\section{Intro}\nText.\n\\begin{thebibliography}{9}\n\\bibitem{a} X.\n\\end{thebibliography}\n"
     secs = detect_sections(_doc(tex, "tex"))
     assert [s.kind for s in secs] == ["body", "references"]
+
+
+def test_numbered_chapter_after_references_ends_references_txt():
+    text = ("1 Introduction\nbody words here.\n\nReferences\n\n[1] W. van der Aalst. Process Mining. Springer, 2016.\n"
+            "[2] A. Smith. Some paper title. Journal of Logs, 2019.\n\n2 Methods\n\nOur secret method is novel.\n")
+    secs = detect_sections(_doc(text))
+    assert [s.kind for s in secs] == ["body", "references", "body"]
+    assert secs[2].heading == "2 Methods"
+
+
+def test_dotted_numbered_chapter_after_references_ends_references():
+    text = ("1 Introduction\nbody.\nReferences\n[1] A. Smith. Title. Journal, 2019.\n5. Conclusions\nOur secret result.\n")
+    secs = detect_sections(_doc(text))
+    assert [s.kind for s in secs] == ["body", "references", "body"]
+    # a sequential dotted reference list is still one references section
+    text = "1 Intro\nbody.\nReferences\n1. Author A\n2. Author B\n3. Author C\n"
+    assert [s.kind for s in detect_sections(_doc(text))] == ["body", "references"]
+
+
+def test_lettered_appendix_heading_ends_references():
+    text = "1 Intro\nbody.\nReferences\n[1] A. Smith. Title. Journal, 2019.\n\nA Proof of Theorem 1\n\nSecret proof text.\n"
+    secs = detect_sections(_doc(text))
+    assert [s.kind for s in secs] == ["body", "references", "appendix"]
+    text = "1 Intro\nbody.\nReferences\n[1] A. Smith. Title. Journal, 2019.\nA Appendix\nSecret.\n"
+    assert [s.kind for s in detect_sections(_doc(text))] == ["body", "references", "appendix"]
+
+
+def test_chapter_after_references_not_in_excluded_lines():
+    doc = _doc("1 Introduction\nbody.\nReferences\n[1] A. Smith. Title. Journal, 2019.\n2 Methods\nSecret method text.\n")
+    secs = detect_sections(doc)
+    ex = excluded_lines(doc, secs)
+    assert 4 in ex and 5 not in ex and 6 not in ex

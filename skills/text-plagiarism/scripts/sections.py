@@ -29,6 +29,12 @@ _KNOWN = [
 ]
 _KNOWN_RE = [(k, re.compile(rf"^{_NUM}(?:{p})\s*[:.]?\s*$", re.I)) for k, p in _KNOWN]
 _NUMBERED = re.compile(r"^(?:\d+(?:\.\d+)*\.?|[IVX]+\.)\s+[A-Z]")
+_DOT_LABEL = re.compile(r"^\s*(\d{1,3})[.)]\s+\S")
+_LETTERED = re.compile(r"^[A-Z]\s+(?:Appendix|Appendices|Proofs?|Additional|Supplementary|Supplemental|Derivations?|"
+                       r"Details?|Detailed|Extended|Experimental|Algorithms?|Notation|Datasets?|Implementation)\b")
+_HEADING_WORDS = re.compile(r"^(?:\d+(?:\.\d+)*\.?|[IVX]+\.)\s+(?:introduction|background|methods?|methodology|"
+                            r"materials and methods|results?|discussion|conclusions?|related work|evaluation|"
+                            r"experiments?|future work|overview|approach|analysis|summary|limitations)\b", re.I)
 _BIB_BEGIN = re.compile(r"\\begin\{thebibliography\}")
 _BIB_END = re.compile(r"\\end\{thebibliography\}")
 _FOOTNOTE_DEF = re.compile(r"^\[\^[^\]]+\]:")
@@ -63,6 +69,29 @@ def _heuristic_heading(text: str) -> bool:
     return bool(_NUMBERED.match(t))
 
 
+def _ends_special(text: str, last_label: int | None) -> str | None:
+    """Heuristic heading inside references/acknowledgements/statements: 'appendix', 'body' or None.
+
+    Stricter than the body rules, because numbered reference entries ('1. Smith ...') look like headings.
+    """
+    t = text.strip()
+    words = t.split()
+    if not t or len(words) > 10 or t.endswith((".", "?", "!", ",", ";", ":")):
+        return None
+    if "," in t or re.search(r"\b(?:1[5-9]|20)\d\d\b", t) or "et al" in t:
+        return None
+    if _LETTERED.match(t):
+        return "appendix"
+    if len(words) > 8 or not _NUMBERED.match(t):
+        return None
+    m = re.match(r"^(\d+)\.\s", t)
+    if m and not _HEADING_WORDS.match(t):
+        n = int(m.group(1))
+        if last_label is None and n == 1 or last_label is not None and n == last_label + 1:
+            return None         # the next number of a dotted reference list
+    return "body"
+
+
 def detect_sections(doc: Document) -> list[Section]:
     use_heuristics = doc.fmt in ("pdf", "txt", "docx")
     # (line index, heading text, kind, level)
@@ -70,6 +99,7 @@ def detect_sections(doc: Document) -> list[Section]:
     cur_kind = "front"
     cur_level: int | None = None
     in_tex_bib = False
+    last_label: int | None = None
     for idx, ln in enumerate(doc.lines):
         text = ln.text
         if _BIB_BEGIN.search(text):
@@ -81,25 +111,36 @@ def detect_sections(doc: Document) -> list[Section]:
                 in_tex_bib = False
             continue
         heading = None
+        forced = None
         level = ln.heading_level
         if level is not None and text.strip():
             heading = text.strip()
         elif use_heuristics and text.strip():
             known = _known_kind(text)
             special_open = cur_kind in ("references", "acknowledgements", "statements", "appendix")
+            ends = _ends_special(text, last_label) if cur_kind in ("references", "acknowledgements", "statements") else None
             if known:
                 heading, level = text.strip(), None
             elif not special_open and _heuristic_heading(text):
                 heading, level = text.strip(), None
+            elif ends:
+                heading, level, forced = text.strip(), None, ends
+            else:
+                dm = _DOT_LABEL.match(text)
+                if dm and cur_kind == "references":
+                    last_label = int(dm.group(1))
         if heading is None:
             continue
-        kind = _known_kind(heading)
+        kind = _known_kind(heading) or forced
+        forced = None
         if kind is None:
             if (level is not None and cur_level is not None and cur_kind not in ("body", "front")
                     and level > cur_level):
                 kind = cur_kind  # a subsection of references/appendix/... stays in it
             else:
                 kind = "body"
+        if kind != cur_kind or kind != "references":
+            last_label = None
         cur_kind, cur_level = kind, level
         marks.append((idx, heading, kind, level))
     sections: list[Section] = []
