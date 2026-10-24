@@ -14,6 +14,14 @@ Retrieval date 2026-10-24 for all live recordings. Passages used: `passages.json
 `workA.control_sentence`, `pmc.sentences`, `apostrophe.sentence`). The sentences are quoted verbatim from the CC BY
 texts for testing under their license.
 
+## Evaluation cases
+
+`cases/` holds the documents and corpus files of `scripts/evaluate.py`. They are generated from `passages.json`
+(invented surrounding text plus the CC BY sentences above). `cases/corpus_related/work-a-excerpt.txt` is a short
+excerpt of work A (the control sentence and the passage). `cases/corpus_unrelated/` holds invented text and
+`cases/corpus_own/` invented text plus the work A passage for the self-overlap case. `T8_scanned.pdf` is a PDF
+page with no text. The real T2 sentence appears nowhere; `cases/T2.md` uses the invented stand-in.
+
 ## Notes on what is real and what is not
 
 - `responses/pdf-A.json`: the Springer PDF of work A. Springer now answers plain HTTP clients with a bot-challenge

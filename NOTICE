@@ -23,3 +23,17 @@ Third-party material
 
 3. Test fixtures under tests/ (where present for other skills) carry their own
    licenses, recorded in each tests/<skill>/fixtures/PROVENANCE.md.
+
+4. tests/text-plagiarism/fixtures/ contains recorded service responses, a PDF and short
+   excerpts of Creative Commons Attribution 4.0 papers, reproduced unchanged for testing:
+   - Leno, Polyvyanyy, Dumas, La Rosa, Maggi, "Robotic Process Mining: Vision and Challenges",
+     Business & Information Systems Engineering (2021), https://doi.org/10.1007/s12599-020-00641-4
+   - Maruster, van der Zee, Buskens, "Identifying Frequent Health Care Users and Care Consumption
+     Patterns: Process Mining of Emergency Medical Services Data", JMIR (2021),
+     https://doi.org/10.2196/27499
+   - Pang et al., "Process mining framework with time perspective for understanding acute care:
+     a case study of AIS in hospitals", BMC Med Inform Decis Mak (2021),
+     https://doi.org/10.1186/s12911-021-01725-1 (one sentence in a recorded search response)
+   License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). They remain under that
+   license and are not relicensed under Apache-2.0. Details:
+   tests/text-plagiarism/fixtures/PROVENANCE.md.

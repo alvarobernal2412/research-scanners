@@ -6,7 +6,7 @@ Five Agent Skills for checking research writing, code and references, built for 
 |---|---|---|
 | [`llm-tropes`](skills/llm-tropes/README.md) | Flags stylistic tells of LLM-written text, with line numbers and sources | Ready |
 | [`code-plagiarism`](skills/code-plagiarism/README.md) | Finds code copied from Stack Overflow and open-source projects, with origin and license evidence | In development (hidden from installs) |
-| [`text-plagiarism`](skills/text-plagiarism/README.md) | Finds passages copied verbatim from published papers and books, with source and attribution status | Planned (hidden from installs) |
+| [`text-plagiarism`](skills/text-plagiarism/README.md) | Finds passages copied verbatim from published open-access work, with source, license and attribution status, and a coverage section that says what could not be checked | Ready |
 | [`license-compliance`](skills/license-compliance/README.md) | Checks that your dependencies' licenses are compatible with your project's license; recommends a license, and lists the ones ruled out, when you have none | Ready |
 | [`reference-check`](skills/reference-check/README.md) | Checks that every reference in a paper exists and matches the real record (authors, title, year, venue, DOI) | Ready |
 
@@ -49,7 +49,7 @@ flowchart TD
     U["You ask Claude<br/>check this draft, paper or repository"] --> C["Claude Code loads the matching skill<br/>from its SKILL.md"]
 
     C --> T["llm-tropes<br/>local scripts only"]
-    C --> X["text-plagiarism<br/>in development"]
+    C --> X["text-plagiarism<br/>plan/run gated, report only"]
     C --> K["code-plagiarism<br/>in development"]
 
     T --> T1["Extract text<br/>find LLM tells by pattern"]
