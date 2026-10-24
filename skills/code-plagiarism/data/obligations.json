@@ -1,0 +1,7 @@
+{
+ "stackoverflow": "If copyrightable, reuse is governed by {license}: credit the author ({author}, {author_url}), link the answer ({origin_url}), name the licence with a link, and indicate changes; adaptations must be shared under the same or a compatible licence (ShareAlike). Example comment: `Adapted from {origin_url} by {author}, {license}`.",
+ "copyleft": "Candidate licence {license} is copyleft; if this code is copied from that source, distributing the combined work carries that licence's terms, which may not fit the project's declared {project_license}. This is not a legal opinion.",
+ "permissive": "If copied from this source, keep the copyright and licence notice ({license}) with the code.",
+ "no_license": "No licence was found for this candidate source: by default all rights are reserved, so reuse needs the author's permission unless a licence is found elsewhere.",
+ "unknown": "Licence unknown; check the candidate source before reuse."
+}
