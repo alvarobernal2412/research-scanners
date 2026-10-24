@@ -37,3 +37,9 @@ Third-party material
    License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). They remain under that
    license and are not relicensed under Apache-2.0. Details:
    tests/text-plagiarism/fixtures/PROVENANCE.md.
+
+5. tests/code-plagiarism/fixtures/ holds public code kept under its original
+   licenses: Stack Overflow snippets (CC BY-SA 3.0 and 4.0), GPL-2.0 and GPL-3.0
+   files, and MIT files. They are test inputs only, are not part of any skill
+   folder, and are not relicensed under Apache-2.0. See
+   tests/code-plagiarism/fixtures/PROVENANCE.md.
