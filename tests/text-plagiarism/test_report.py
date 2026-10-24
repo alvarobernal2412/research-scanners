@@ -253,3 +253,75 @@ def test_unloaded_corpus_item_forces_listing_and_cannot_hide_behind_clean_status
     assert c["corpus"]["compared"] == 3
     assert c["corpus"]["not_loaded"] == [{"id": "c1", "name": "broken.pdf", "status": "unreadable", "reason": "unreadable_file"}]
     assert c["status"] == "insufficient_coverage" and any("corpus item" in r for r in c["status_reasons"])
+
+
+UNPUB = [f"[{i}] Someone{i}, S.: Work in preparation number {i}, unpublished manuscript." for i in range(4, 7)]
+
+
+def test_partial_coverage_is_stated_even_with_findings(tmp_path):
+    refs = f"[1] {A['ref_string']}\n[2] Doe, J.: A forthcoming chapter on things, in preparation."
+    wd = make_run(tmp_path, body=A["passage"], refs=refs, opener=REPLAY)
+    c = rep(wd)["coverage"]
+    assert c["status"] == "findings"
+    assert any("only 1 of 2" in r for r in c["status_reasons"])
+
+
+def test_half_of_cited_works_unchecked_is_not_no_overlap(tmp_path):
+    refs = refs_block(3) + "\n" + "\n".join(UNPUB)
+    c = rep(make_run(tmp_path, refs=refs, opener=Web(3)))["coverage"]
+    assert c["references"]["checked_of_total"] == {"checked": 3, "total": 6}
+    assert c["status"] == "insufficient_coverage"
+    assert any("only 3 of 6" in r for r in c["status_reasons"])
+
+
+class PaywallWeb(Web):
+    def __call__(self, request, timeout=None):
+        if "syn4" in request.full_url and "works/doi" in request.full_url:
+            return Resp(json.dumps({"title": "Closed", "open_access": {"is_oa": False}, "best_oa_location": None,
+                                    "locations": []}).encode())
+        return super().__call__(request, timeout)
+
+
+def test_known_paywalled_work_does_not_block_no_overlap_but_is_stated(tmp_path):
+    c = rep(make_run(tmp_path, refs=refs_block(4), opener=PaywallWeb(4)))["coverage"]
+    assert c["references"]["full_text_not_obtained"][0]["reason"] == "paywalled"
+    assert c["status"] == "no_overlap_found_in_checked_sources"
+    assert any("only 3 of 4" in r for r in c["status_reasons"])
+
+
+def _fake_open_state(wd, n_queried, over_cap):
+    cands, _ = open_tier.all_candidates(wd)
+    cands = [c for c in cands if c.excluded is None][:n_queried]
+    from dataclasses import asdict
+    state = {"version": 1, "use_keys": False,
+             "selection": {"sections": ["s1"], "backends": ["europepmc"], "cap": 10,
+                           "candidates": [asdict(c) for c in cands], "excluded": [], "over_cap": over_cap,
+                           "backend_over_cap": {}},
+             "queries": {f"0:r{i:03d}": {"candidate": c.id, "backend": "europepmc", "text": c.text, "req_id": f"r{i:03d}"}
+                         for i, c in enumerate(cands, 1)},
+             "results": {f"0:r{i:03d}": {"hit_count": 0, "hits": [], "error": None} for i, _ in enumerate(cands, 1)},
+             "rounds": [{"round": "search"}]}
+    (wd / "open_state.json").write_text(json.dumps(state), encoding="utf-8")
+
+
+def _long_body():
+    return " ".join(f"Qwerty{chr(97 + k)}x zxcvbnmasd lkjhgfdsa pqowieurty mnbvcxzlkj hgfdsapoiu ytrewqlkjh "
+                    "gfdsamnbvc xzlkjhpoiu ytrewqazxs wedcrfvtgb yhnujmikol." for k in range(12))
+
+
+def test_open_tier_alone_with_unqueried_sentences_is_not_no_overlap(tmp_path):
+    wd = make_run(tmp_path, body=_long_body(), refs="")
+    _fake_open_state(wd, 10, {"s1": 2})
+    c = rep(wd)["coverage"]
+    assert c["status"] == "insufficient_coverage" and any("not queried" in r for r in c["status_reasons"])
+    wd2 = make_run(tmp_path / "ok", body=_long_body(), refs="") if (tmp_path / "ok").mkdir() is None else None
+    _fake_open_state(wd2, 10, {})
+    c2 = rep(wd2)["coverage"]
+    assert c2["status"] == "no_overlap_found_in_checked_sources", (c2["status_reasons"], c2["open"])
+
+
+def test_open_tier_alone_with_unchecked_references_is_not_no_overlap(tmp_path):
+    wd = make_run(tmp_path, body=_long_body(), refs=refs_block(2))      # never fetched
+    _fake_open_state(wd, 10, {})
+    c = rep(wd)["coverage"]
+    assert c["status"] == "insufficient_coverage"

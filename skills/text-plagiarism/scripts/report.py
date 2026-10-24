@@ -26,7 +26,8 @@ from sections import EXCLUDED_KINDS  # noqa: E402
 from strict import source_key  # noqa: E402
 
 MIN_FULLTEXT_REFS = 3
-MIN_FULLTEXT_RATIO = 0.5
+# a cited work that is known to have no open copy; every other unchecked work keeps the status from "no overlap"
+UNOBTAINABLE_REASONS = frozenset({"paywalled", "no_oa_location", "landing_page_only", "only_supplementary_files"})
 MIN_OPEN_QUERIED = 10
 
 DISCLAIMER = ("Findings show textual overlap with the listed sources and how it is attributed. They are not a legal "
@@ -234,8 +235,15 @@ def build_report(workdir: Path) -> dict:
         failures.append(f"{open_block['queries_failed']} open-tier queries failed")
     if corpus_block["not_loaded"]:
         failures.append(f"{len(corpus_block['not_loaded'])} corpus item(s) could not be loaded or fetched")
-    enough_refs = checked_n >= MIN_FULLTEXT_REFS and total_n > 0 and checked_n / total_n >= MIN_FULLTEXT_RATIO
-    enough_open = open_block["sentences_queried"] >= MIN_OPEN_QUERIED and open_error_free_backend
+    definitive = {_entry_id(i, e) for i, e in enumerate(entries)
+                  if by_key.get(_entry_id(i, e)) is not None and by_key[_entry_id(i, e)].status == "not_obtained"
+                  and by_key[_entry_id(i, e)].reason in UNOBTAINABLE_REASONS}
+    unchecked_obtainable = all_ids - checked_ids - definitive      # could have been checked and was not
+    over_cap = sum(open_block["not_queried_over_cap"].values())
+    over_cap += sum((open_state or {}).get("selection", {}).get("backend_over_cap", {}).values())
+    enough_refs = checked_n >= MIN_FULLTEXT_REFS and total_n > 0 and not unchecked_obtainable
+    enough_open = (open_block["sentences_queried"] >= MIN_OPEN_QUERIED and open_error_free_backend
+                   and over_cap == 0 and not unchecked_obtainable)
     if result["findings"]:
         status = "findings"
     elif (enough_refs or enough_open) and not failures:
@@ -243,9 +251,11 @@ def build_report(workdir: Path) -> dict:
     else:
         status = "insufficient_coverage"
     reasons = list(failures)
-    if status == "insufficient_coverage" and not failures:
+    if checked_n < total_n or status == "insufficient_coverage":
         reasons.append(f"only {checked_n} of {total_n} cited or supplied sources were checked"
                        + ("" if open_block["ran"] else " and the open tier was not run"))
+    if over_cap:
+        reasons.append(f"{over_cap} eligible sentence request(s) were not queried because of the cap")
 
     # ------------------------------------------------------------ sections
     sec_rows = []
