@@ -114,7 +114,7 @@ Dashed edges send data over the network. Everything else runs on your machine. T
 
 ## Quality checks
 
-The automated tests in `tests/text-plagiarism/` never touch the network: sockets are blocked, HTTP is injected and answered from responses recorded once from the real services (`tests/text-plagiarism/fixtures/`, with provenance and licenses in `PROVENANCE.md`). They cover extraction, section detection, the winnowing overlap, attribution, the approval gate, the transport, every backend, the strict and open pipelines, the corpus, the report and the evaluation harness. `scripts/evaluate.py` scores labelled cases offline and checks three hard gates: privacy, honest coverage and no verdict.
+236 automated tests in `tests/text-plagiarism/` (run `python -m pytest tests/text-plagiarism -q`) never touch the network: sockets are blocked, HTTP is injected and answered from responses recorded once from the real services (`tests/text-plagiarism/fixtures/`, with provenance and licenses in `PROVENANCE.md`). They cover extraction, section detection, the winnowing overlap, attribution, the approval gate, the transport, every backend, the strict and open pipelines, the corpus, the report and the evaluation harness. `scripts/evaluate.py` scores labelled cases offline and checks three hard gates: privacy, honest coverage and no verdict.
 
 ## License
 
