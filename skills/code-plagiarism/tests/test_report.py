@@ -451,3 +451,24 @@ def test_findings_keys(tmp_path):
     assert set(f) == {"id", "file", "lines", "matched_lines", "match_type", "candidates", "local_license_evidence",
                       "attribution", "flag", "flag_reasons", "obligation", "notes"}
     assert set(f["attribution"]) == {"status", "evidence"}
+
+
+def test_url_the_code_uses_is_not_attribution(tmp_path):
+    # C1 holds 'https://jsonplaceholder.typicode.com/comments?' as an endpoint, which is not a reference to a source
+    root = project(tmp_path, {"src/C1_so_2019_cc4.js": C1})
+    rep = build(root, [se_results(tmp_path, root)])
+    assert rep["findings"][0]["attribution"]["status"] == "absent"
+    assert rep["references_in_comments"] == []
+
+
+@pytest.mark.parametrize("line, counts", [
+    ("# https://example.org/x", True), ("x = 1  # https://example.org/x", True),
+    ("// see https://example.org/x", True), ("/* https://example.org/x */", True), (" * https://example.org/x", True),
+    ('"""Copied from https://example.org/x', True), ("// https://stackoverflow.com/a/123", True),
+    ("// https://github.com/o/r/blob/main/a.py", True),
+    ("url = 'https://api.example.org/v1'", False), ("fetch(\"https://api.example.org/v1\").then(go)", False),
+])
+def test_which_urls_count_as_references(tmp_path, line, counts):
+    root = project(tmp_path, {"src/a.py": line + "\n" + "x = 1\n" * 30})
+    refs = build(root)["references_in_comments"]
+    assert bool(refs) == counts, line

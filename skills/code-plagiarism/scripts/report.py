@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from collections import Counter, OrderedDict
@@ -164,6 +165,22 @@ def _load_results(paths: list, root_name: str) -> list:
 
 # ---- files ----------------------------------------------------------------------------------------------
 
+_COMMENT_MARK = re.compile(r"(?<!:)//|/\*|(?<![\w&])#|^\s*\*|--\s")
+_CUE = re.compile(r"\b(?:copied|adapted|taken|derived|originally|based on|source|credit|credits|via|thanks|courtesy|"
+                  r"inspired|attribution|author|licen[cs]e|see|refs?|reference)\b", re.I)
+
+
+def _is_attribution_ref(ref, line: str) -> bool:
+    """Whether a URL is plausibly a reference to a source rather than a URL the code uses. Stack Overflow and
+    GitHub links always count. Other URLs count when the line holds a comment marker before the URL or words
+    such as "copied from" / "source" / "see" (this also catches docstrings). A URL in a string that the code
+    uses (an API endpoint) does not."""
+    if ref.kind in ("stackoverflow", "github"):
+        return True
+    before = line[:max(line.find(ref.url), 0)]
+    return bool(_COMMENT_MARK.search(before) or _CUE.search(line))
+
+
 class _File:
     def __init__(self, sf, lines, header, refs):
         self.sf, self.lines, self.header, self.refs = sf, lines, header, refs
@@ -264,7 +281,8 @@ def build_report(root: Path, results_paths: list, use_scancode: bool = True, sca
             lines = read_lines(sf.path)
         except OSError:
             continue
-        files[sf.rel] = _File(sf, lines, detect_header(lines), find_references(lines))
+        refs = [r for r in find_references(lines) if _is_attribution_ref(r, lines[r.line - 1])]
+        files[sf.rel] = _File(sf, lines, detect_header(lines), refs)
     project = project_licenses(inv)
     notes: list = []
     scancode = "disabled"
