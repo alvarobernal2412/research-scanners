@@ -111,6 +111,13 @@ def apply_locate(info: SourceInfo, body: bytes) -> SourceInfo:
     if pmcid:
         info.pmcid = pmcid.rsplit("/", 1)[-1]
     locations = [l for l in (work.get("locations") or []) if isinstance(l, dict)]
+    if not info.pmcid:       # a PMC copy is often listed only as a location
+        for loc in locations:
+            m = re.search(r"europepmc\.org/(?:pmc/)?articles?/(?:PMC)?(\d+)|ncbi\.nlm\.nih\.gov/pmc/articles/(?:PMC)?(\d+)",
+                          (loc.get("landing_page_url") or "") + " " + (loc.get("pdf_url") or ""))
+            if m:
+                info.pmcid = "PMC" + (m.group(1) or m.group(2))
+                break
     best = work.get("best_oa_location") or {}
     cands: list[tuple[int, str, dict]] = []
 

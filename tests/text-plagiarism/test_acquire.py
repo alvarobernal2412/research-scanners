@@ -190,3 +190,9 @@ def test_locate_requests_carry_only_public_ids(monkeypatch):
         assert "abc12345" not in r.url
     assert infos[1].zenodo_ids == ["21373047"]
     assert reqs[0].url.startswith("https://api.openalex.org/works/doi:10.1007/978-3-032-40795-5_31")
+
+
+def test_pmcid_found_from_location_urls():
+    info = located(P["pmc"]["doi"], None)
+    assert info.pmcid == "PMC8529480"
+    assert info.candidates[0] == "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8529480/fullTextXML"
