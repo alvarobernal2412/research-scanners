@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from inventory import Inventory, read_lines  # noqa: E402
+from model import find_exe  # noqa: E402
 
 try:
     import tomllib
@@ -259,8 +260,8 @@ def effective_file_license(file_ev: list[LicenseEvidence],
     return None
 
 
-def scancode_status() -> str:
-    return "available" if shutil.which("scancode") else "not_installed"
+def scancode_status(root=None) -> str:
+    return "available" if find_exe("scancode", root) else "not_installed"
 
 
 def _scancode_evidence(entry: dict) -> list[LicenseEvidence]:
@@ -289,7 +290,7 @@ def _scancode_evidence(entry: dict) -> list[LicenseEvidence]:
 
 def run_scancode(root: Path, rels: list[str], runner=subprocess.run
                  ) -> dict[str, list[LicenseEvidence]] | None:
-    exe = shutil.which("scancode")
+    exe = find_exe("scancode", root)
     if not exe:
         return None
     wanted = set(rels)

@@ -124,13 +124,13 @@ def test_project_licenses_manifest(tmp_path):
 
 
 def test_scancode_not_installed(monkeypatch):
-    monkeypatch.setattr(shutil, "which", lambda *_a, **_k: None)
+    monkeypatch.setattr(headers, "find_exe", lambda *_a, **_k: None)
     assert headers.scancode_status() == "not_installed"
     assert run_scancode(Path("."), ["a.py"]) is None
 
 
 def test_scancode_output_parsed(monkeypatch, tmp_path):
-    monkeypatch.setattr(shutil, "which", lambda *_a, **_k: "scancode")
+    monkeypatch.setattr(headers, "find_exe", lambda *_a, **_k: "scancode")
     sample = (FIX / "responses/scancode_sample.json").read_text(encoding="utf-8")
     seen = {}
 

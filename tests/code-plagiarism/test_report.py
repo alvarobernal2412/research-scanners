@@ -235,7 +235,7 @@ def test_services_and_requests_disclosed(tmp_path):
 
 def test_scancode_not_installed_note(tmp_path, monkeypatch):
     import headers
-    monkeypatch.setattr(headers.shutil, "which", lambda name: None)
+    monkeypatch.setattr(headers, "find_exe", lambda *a, **k: None)
     root = project(tmp_path, {"src/C4_attrs_filters_MIT.py": CASES / "C4" / "C4_attrs_filters_MIT.py"})
     rep = build(root, use_scancode=True)
     assert rep["coverage"]["scancode"] == "not_installed"
@@ -245,7 +245,7 @@ def test_scancode_not_installed_note(tmp_path, monkeypatch):
 
 def test_scancode_used_when_available(tmp_path, monkeypatch):
     import headers
-    monkeypatch.setattr(headers.shutil, "which", lambda name: "/bin/scancode")
+    monkeypatch.setattr(headers, "find_exe", lambda *a, **k: "/bin/scancode")
     sample = json.loads((RESPONSES / "scancode_sample.json").read_text(encoding="utf-8"))
 
     def runner(cmd, **kw):

@@ -40,7 +40,8 @@ import approval  # noqa: E402
 from approval import ApprovalError, Guard, build_plan, load_plan, render_preview, write_plan  # noqa: E402
 from inventory import (MAX_FILE_BYTES, InventoryError, SourceFile, inventory,  # noqa: E402
                        read_lines, resolve_includes)
-from model import Candidate, RawMatch, new_results, raw_match_to_dict, write_results  # noqa: E402
+from model import (Candidate, RawMatch, find_exe, inside, new_results,  # noqa: E402
+                   raw_match_to_dict, usable_exe, write_results)
 from triage import SCANOSS_MIN_LINES, declared_tree_reason, scanoss_drop_reason  # noqa: E402
 
 ENDPOINT = "https://api.osskb.org/scan/direct"
@@ -186,29 +187,7 @@ def describe_wfp(wfp: str) -> list[dict]:
 _SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|COOKIE|SESSION|DSN", re.I)
 
 
-def _inside(path, root) -> bool:
-    try:
-        Path(os.path.normcase(os.path.realpath(path))).relative_to(Path(os.path.normcase(os.path.realpath(root))))
-        return True
-    except ValueError:
-        return False
-
-
-def _usable_cli(candidate, root) -> str | None:
-    """An absolute, existing, executable file that is not the cwd, the scan root or inside either."""
-    cand = str(candidate)
-    if not cand or not os.path.isabs(cand):
-        return None
-    try:
-        real = os.path.realpath(cand)
-        if not os.path.isfile(real) or (os.name != "nt" and not os.access(real, os.X_OK)):
-            return None
-        forbidden = [os.getcwd()] + ([str(root)] if root is not None else [])
-        if any(_inside(cand, f) or _inside(real, f) for f in forbidden):
-            return None
-    except OSError:
-        return None
-    return real
+_inside, _usable_cli = inside, usable_exe
 
 
 def find_cli(root=None) -> str | None:
@@ -219,18 +198,7 @@ def find_cli(root=None) -> str | None:
     override = os.environ.get("SCANOSS_PY")
     if override:
         return _usable_cli(override, root)
-    exts = [""]
-    if os.name == "nt":
-        exts = [e.lower() for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e] or [".exe"]
-    for entry in os.environ.get("PATH", "").split(os.pathsep):
-        entry = entry.strip().strip('"')
-        if not entry or entry == "." or not os.path.isabs(entry):
-            continue
-        for ext in exts:
-            found = _usable_cli(os.path.join(entry, "scanoss-py" + ext), root)
-            if found:
-                return found
-    return None
+    return find_exe("scanoss-py", root)
 
 
 def child_env(environ=None) -> dict:

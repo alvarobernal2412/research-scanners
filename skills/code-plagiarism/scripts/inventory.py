@@ -16,6 +16,8 @@ from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from model import find_exe  # noqa: E402
+
 MAX_FILE_BYTES = 1_000_000
 MINIFIED_LINE_CHARS = 500
 VENDOR_DIRS = frozenset({
@@ -96,12 +98,13 @@ def read_lines(path: Path) -> list[str]:
 
 
 def _git_lists(root: Path) -> tuple[list[str], set[str]] | None:
-    if not (root / ".git").exists() or shutil.which("git") is None:
+    git = find_exe("git", root)
+    if not (root / ".git").exists() or git is None:
         return None
 
     def run(*args: str) -> list[str]:
         out = subprocess.run(
-            ["git", "-C", str(root), "ls-files", *args, "-z"],
+            [git, "-C", str(root), "ls-files", *args, "-z"],
             capture_output=True, check=True,
         ).stdout
         return [p.decode("utf-8", "replace") for p in out.split(b"\0") if p]
@@ -162,10 +165,11 @@ def inventory(root: Path, require_sources: bool = True) -> Inventory:
         rels = sorted(set(rels) | ignored)
     else:
         rels, ignored, listing = _walk_list(root), set(), "walk"
-        if shutil.which("git") is not None:
+        git = find_exe("git", root)
+        if git is not None:
             try:
                 res = subprocess.run(
-                    ["git", "-C", str(root), "check-ignore", "--stdin", "-z"],
+                    [git, "-C", str(root), "check-ignore", "--stdin", "-z"],
                     input=("\0".join(rels) + "\0").encode(), capture_output=True,
                 )
                 if res.returncode in (0, 1):

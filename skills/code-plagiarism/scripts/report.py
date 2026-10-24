@@ -306,7 +306,7 @@ def build_report(root: Path, results_paths: list, use_scancode: bool = True, sca
     notes: list = []
     scancode = "disabled"
     if use_scancode:
-        if scancode_status() == "not_installed":
+        if scancode_status(inv.root) == "not_installed":
             scancode = "not_installed"
             notes.append("ScanCode is not installed: licence headers were detected with the built-in detector "
                          "(SPDX tags and common licence texts). Optional: pip install scancode-toolkit.")

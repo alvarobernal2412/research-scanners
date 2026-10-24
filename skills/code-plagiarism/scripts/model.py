@@ -6,11 +6,55 @@ a user file. Backends write results files; report.py reads them.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+def inside(path, root) -> bool:
+    try:
+        Path(os.path.normcase(os.path.realpath(path))).relative_to(Path(os.path.normcase(os.path.realpath(root))))
+        return True
+    except ValueError:
+        return False
+
+
+def usable_exe(candidate, root=None) -> str | None:
+    """An absolute, existing, executable file that is not the cwd, the scan root or inside either."""
+    cand = str(candidate)
+    if not cand or not os.path.isabs(cand):
+        return None
+    try:
+        real = os.path.realpath(cand)
+        if not os.path.isfile(real) or (os.name != "nt" and not os.access(real, os.X_OK)):
+            return None
+        forbidden = [os.getcwd()] + ([str(root)] if root is not None else [])
+        if any(inside(cand, f) or inside(real, f) for f in forbidden):
+            return None
+    except OSError:
+        return None
+    return real
+
+
+def find_exe(name: str, root=None) -> str | None:
+    """Locate a program by walking PATH ourselves. shutil.which also searches the current directory first on
+    Windows, which would run a binary planted in the scanned repository. Empty, '.' and relative PATH entries,
+    the cwd and the scan root are skipped; only an absolute existing file is returned (symlinks resolved)."""
+    exts = [""]
+    if os.name == "nt":
+        exts = [e.lower() for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e] or [".exe"]
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        entry = entry.strip().strip('"')
+        if not entry or entry == "." or not os.path.isabs(entry):
+            continue
+        for ext in exts:
+            found = usable_exe(os.path.join(entry, name + ext), root)
+            if found:
+                return found
+    return None
+
 
 REQUIRED_RESULT_KEYS = ("backend", "plan_sha256", "root")
 
