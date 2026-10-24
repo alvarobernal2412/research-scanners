@@ -185,3 +185,26 @@ def test_verified_short_overlap_is_reported_from_eight_words(tmp_path):
     synthetic_state(wd, sentence, hit)
     [f] = open_findings(wd)["findings"]
     assert f["overlap_words"] == 9 and f["source"]["found_via"] == "open:europepmc"
+
+
+def test_verify_plan_refuses_urls_that_embed_user_text(tmp_path):
+    import urllib.parse
+
+    from verify import plan_verification
+    from approval import body_windows
+
+    wd = run_open(tmp_path, f"# Introduction\n\n{D1}\n")
+    leaky = "https://tracker.example.org/p?q=" + urllib.parse.quote(" ".join(D1.split()[:7]))
+    fine = "https://repo.example.org/paper.pdf"
+    synthetic_state(wd, D1, fake_hit(fulltext_url=leaky))
+    state = json.loads((wd / "open_state.json").read_text(encoding="utf-8"))
+    state["results"]["1:r002"] = {"hit_count": 1, "hits": [fake_hit(fulltext_url=fine, doi="10.1/ok")], "error": None}
+    windows = body_windows([D1])
+    refused = []
+    reqs = plan_verification(state, windows, refused)
+    assert [r.url for r in reqs] == [fine] and refused == [leaky]
+    # the CLI flags them in the plan output
+    (wd / "open_state.json").write_text(json.dumps(state), encoding="utf-8")
+    code, plan = call_main(open_tier.main, ["plan", "--workdir", str(wd)])
+    assert code == 0 and plan["round"] == "verify"
+    assert plan["refused_urls"] == [leaky] and leaky not in open(plan["plan"], encoding="utf-8").read()

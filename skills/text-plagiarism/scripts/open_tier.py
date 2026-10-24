@@ -322,9 +322,16 @@ def _plan_followup(workdir: Path, doc, state: dict) -> int:
     if "verify" not in done_rounds:
         import verify
 
-        reqs = verify.plan_verification(state)
-        if reqs:
-            return _emit_plan(workdir, build_plan("open", "verify", doc.sha256, reqs), "verify", {})
+        from approval import body_windows
+
+        refused: list[str] = []
+        reqs = verify.plan_verification(state, body_windows(l.text for l in doc.lines), refused)
+        if reqs or refused:
+            extra = {"refused_urls": refused} if refused else {}
+            if reqs:
+                return _emit_plan(workdir, build_plan("open", "verify", doc.sha256, reqs), "verify", extra)
+            emit({"done": True, **extra})
+            return 0
     emit({"done": True})
     return 0
 

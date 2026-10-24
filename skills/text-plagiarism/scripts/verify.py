@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from acquire import service_for_url as service_for_url  # noqa: E402,F401
 from acquire import text_from_response  # noqa: E402
-from approval import PlannedRequest  # noqa: E402
+from approval import PlannedRequest, content_violation  # noqa: E402
 from attribute import doi_key  # noqa: E402
 from compare import find_matches  # noqa: E402
 from extract import ExtractError, Line, extract_bytes, jats_info  # noqa: E402
@@ -47,7 +47,9 @@ def _all_hits(state: dict):
             yield key, q, res, h
 
 
-def plan_verification(state: dict) -> list[PlannedRequest]:
+def plan_verification(state: dict, windows=None, refused: list | None = None) -> list[PlannedRequest]:
+    """Requests for the open text of hits. A URL that embeds the user's own words (a 5-word window) is never
+    requested: a backend could encode a query in a URL it returns. Such URLs are appended to `refused`."""
     fetched = state.get("verify", {}).get("fetched", {})
     seen: set[str] = set()
     reqs = []
@@ -56,9 +58,14 @@ def plan_verification(state: dict) -> list[PlannedRequest]:
         if not url or h.get("full_text") or url in seen or url in fetched:
             continue
         seen.add(url)
-        reqs.append(PlannedRequest(id="", service=service_for_url(url), method="GET", url=url, carries="public_url",
-                                   purpose="fetch the open text of a search hit to verify the overlap locally",
-                                   subject=f"hit:{_url_id(url)}"))
+        req = PlannedRequest(id="", service=service_for_url(url), method="GET", url=url, carries="public_url",
+                             purpose="fetch the open text of a search hit to verify the overlap locally",
+                             subject=f"hit:{_url_id(url)}")
+        if windows and content_violation(req, windows) is not None:
+            if refused is not None:
+                refused.append(url)
+            continue
+        reqs.append(req)
     return reqs
 
 
