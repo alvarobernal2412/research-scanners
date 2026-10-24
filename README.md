@@ -26,6 +26,32 @@ Make them available in every project (user-level) by adding `-g`:
 npx skills add alvarobernal2412/research-scanners --skill '*' -a claude-code -g
 ```
 
+### Other agents (Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode and more)
+
+The same command works for any agent the CLI supports: change the `-a` value. Repeat `-a` to install for several agents at once.
+
+| Agent | `-a` value | Project folder | Global folder (`-g`) |
+|---|---|---|---|
+| Claude Code | `claude-code` | `.claude/skills/` | `~/.claude/skills/` |
+| Codex | `codex` | `.agents/skills/` | `~/.agents/skills/` |
+| Cursor | `cursor` | `.agents/skills/` | `~/.cursor/skills/` |
+| Gemini CLI | `gemini-cli` | `.agents/skills/` | `~/.gemini/skills/` |
+| GitHub Copilot | `github-copilot` | `.agents/skills/` | `~/.copilot/skills/` |
+| OpenCode | `opencode` | `.agents/skills/` | `~/.config/opencode/skills/` |
+| Windsurf | `windsurf` | `.windsurf/skills/` | `~/.codeium/windsurf/skills/` |
+| Cline | `cline` | `.agents/skills/` | `~/.agents/skills/` |
+| Goose | `goose` | `.goose/skills/` | `~/.config/goose/skills/` |
+
+```
+npx skills add alvarobernal2412/research-scanners --skill '*' -a codex                       # Codex, this project
+npx skills add alvarobernal2412/research-scanners --skill '*' -a codex -a cursor -g          # Codex and Cursor, every project
+npx skills add alvarobernal2412/research-scanners --skill '*' -a gemini-cli -a github-copilot
+```
+
+The CLI supports many more agents than this table; its [agent list](https://github.com/vercel-labs/skills/blob/main/docs/agents.md) has the exact `-a` names and folders. By default the CLI symlinks each agent's folder to one shared copy; add `--copy` if your system does not support symlinks (for example some Windows setups).
+
+These skills are `SKILL.md` instructions plus Python scripts, so the agent must be able to read skills and run `python` commands in a shell. An agent without a shell tool can read the instructions but not run the scripts. If your agent has no skills support at all, point it at `skills/<name>/SKILL.md` and ask it to follow that file.
+
 Other useful forms (see the CLI documentation for all options):
 
 ```
