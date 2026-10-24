@@ -108,7 +108,7 @@ def test_phrase_strips_quotes_brackets_colons():
 def test_plan_contains_exactly_selected_phrases(tmp_path):
     md = f"# Introduction\n\n{P['pmc']['sentences'][0]} {P['pmc']['sentences'][1]}\n\nIn 2020 numbers are excluded from this one anyway.\n"
     wd, ids = prep(tmp_path, md)
-    code, out = call_main(open_tier.main, ["plan", "--workdir", str(wd), "--sections", ids["Introduction"]])
+    code, out = call_main(open_tier.main, ["plan", "--workdir", str(wd), "--sections", ids["Introduction"], "--backends", "europepmc"])
     assert code == 0 and out["round"] == "search"
     plan = json.loads(open(out["plan"], encoding="utf-8").read())
     sent = sorted(r["text_sent"] for r in plan["requests"])
@@ -125,7 +125,8 @@ def test_no_identity_on_keyless_backend_without_use_keys(tmp_path, monkeypatch):
     for k in ("OPENALEX_API_KEY", "CORE_API_KEY", "TEXT_PLAGIARISM_MAILTO"):
         monkeypatch.setenv(k, "secret-value-123")
     wd, ids = prep(tmp_path, f"# Introduction\n\n{P['pmc']['sentences'][0]}\n")
-    code, out = call_main(open_tier.main, ["plan", "--workdir", str(wd), "--sections", ids["Introduction"], "--use-keys"])
+    code, out = call_main(open_tier.main, ["plan", "--workdir", str(wd), "--sections", ids["Introduction"], "--use-keys",
+                                           "--backends", "europepmc"])
     text = open(out["plan"], encoding="utf-8").read()
     assert code == 0 and "secret-value-123" not in text      # europepmc has no keyed route at all
     plan = json.loads(text)

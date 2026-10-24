@@ -41,7 +41,8 @@ SENTENCE_MAX_WORDS = 40
 QUOTED_FRACTION = 0.8
 
 BACKENDS: dict[str, object] = {"europepmc": be_europepmc}
-DEFAULT_BACKENDS = ("openalex", "europepmc", "core")
+# CORE answered with 500/429 and no verified body-text hit in the spike: opt-in only, as are Open Library and Brave
+DEFAULT_BACKENDS = ("openalex", "europepmc")
 for _name, _mod in (("openalex", "be_openalex"), ("core", "be_core"), ("openlibrary", "be_books_web"),
                     ("brave", "be_books_web")):
     try:
@@ -309,7 +310,7 @@ def _plan_followup(workdir: Path, doc, state: dict) -> int:
         for rid, q in state["queries"].items():
             res = state["results"].get(rid, {})
             if q["backend"] == "openalex" and res.get("hit_count") == 0 and not res.get("error"):
-                second = be_openalex.second_window(phrase_for_query(cands[q["candidate"]]["text"], "openalex"))
+                second = be_openalex.second_window(phrase_for_query(cands[q["candidate"]]["text"], "plain"))
                 if second:
                     windows.setdefault(q["candidate"], {})["openalex"] = second
         if windows:
