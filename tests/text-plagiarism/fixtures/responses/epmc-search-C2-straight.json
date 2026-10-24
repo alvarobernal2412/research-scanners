@@ -1,0 +1,9 @@
+{
+ "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=%22We%20compute%20a%20set%20of%20metrics%20such%20as%20the%20minimum%2C%20median%2C%20maximum%20time%20of%20events%2C%20and%20mark%20them%20after%20the%20event%27s%20name.%22&format=json&resultType=core&pageSize=5",
+ "method": "GET",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json;charset=UTF-8"
+ },
+ "body_b64": "eyJ2ZXJzaW9uIjoiNi45IiwiaGl0Q291bnQiOjAsInJlcXVlc3QiOnsicXVlcnlTdHJpbmciOiJcIldlIGNvbXB1dGUgYSBzZXQgb2YgbWV0cmljcyBzdWNoIGFzIHRoZSBtaW5pbXVtLCBtZWRpYW4sIG1heGltdW0gdGltZSBvZiBldmVudHMsIGFuZCBtYXJrIHRoZW0gYWZ0ZXIgdGhlIGV2ZW50J3MgbmFtZS5cIiIsInJlc3VsdFR5cGUiOiJjb3JlIiwiY3Vyc29yTWFyayI6IioiLCJwYWdlU2l6ZSI6NSwic29ydCI6IiIsInN5bm9ueW0iOmZhbHNlfSwicmVzdWx0TGlzdCI6eyJyZXN1bHQiOltdfX0="
+}

@@ -1,0 +1,22 @@
+{
+ "https://api.core.ac.uk/v3/search/works/?limit=5&q=%28%22Process%20mining%20has%20an%20advantage%20over%20other%20mapping%20techniques%20as%20it%20uses%20factual%20observations%20retrieved%20from%20data%20rather%20than%20man-made%20process%20models.%22%29": "core-D1.json",
+ "https://api.core.ac.uk/v3/search/works/?limit=5&q=%28%22The%20events%20that%20do%20not%20share%20any%20data%20attributes%20and%2For%20values%20or%20originate%20from%20uncommon%20sources%20most%20likely%20constitute%20noise.%22%29": "core-A2.json",
+ "https://api.crossref.org/works?query.bibliographic=Leno%2C%20V.%2C%20Polyvyanyy%2C%20A.%2C%20Dumas%2C%20M.%2C%20La%20Rosa%2C%20M.%2C%20Maggi%2C%20F.M.%3A%20Robotic%20process%20mining%3A%20vision%20and%20challenges.%20Business%20%26%20Information%20Systems%20Engineering%2063%283%29%2C%20301-314%20%282021%29&rows=2": "crossref-A.json",
+ "https://api.crossref.org/works?query.bibliographic=Tukey%2C%20J.%20W.%20%281977%29.%20Exploratory%20Data%20Analysis.%20Addison-Wesley.&rows=2": "crossref-book.json",
+ "https://api.openalex.org/works/doi:10.1007/978-3-032-40795-5_31": "oa-work-T1.json",
+ "https://api.openalex.org/works/doi:10.1007/s12599-020-00641-4": "oa-work-A.json",
+ "https://api.openalex.org/works/doi:10.2196/27499": "oa-work-D.json",
+ "https://api.openalex.org/works?filter=fulltext.search%3A%22Process%20mining%20has%20an%20advantage%20over%20other%20mapping%20techniques%20as%20it%20uses%22&per-page=5": "oa-fulltext-D1-w12.json",
+ "https://api.openalex.org/works?filter=fulltext.search%3A%22The%20events%20that%20do%20not%20share%20any%20data%20attributes%20and%2For%20values%20or%22&per-page=5": "oa-fulltext-A2-w12.json",
+ "https://api.openalex.org/works?filter=fulltext.search%3A%22Unattended%20RPA%20bots%20on%20the%20other%20hand%20execute%20scripts%20without%20human%20involvement%22&per-page=5": "oa-fulltext-A1-w12.json",
+ "https://link.springer.com/content/pdf/10.1007/s12599-020-00641-4.pdf": "pdf-A.json",
+ "https://openlibrary.org/search/inside.json?q=%22it%20was%20the%20best%20of%20times%2C%20it%20was%20the%20worst%20of%20times%22": "openlibrary-famous.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8529480/fullTextXML": "epmc-fulltext-D.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=5&query=%22As%20a%20result%2C%20process%20mining%20further%20identifies%20the%20health%20care%20providers%20involved%20and%20the%20nature%20of%20their%20involvement%20in%20terms%20of%20specialties.%22&resultType=core": "epmc-search-D3.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=5&query=%22Process%20mining%20has%20an%20advantage%20over%20other%20mapping%20techniques%20as%20it%20uses%20factual%20observations%20retrieved%20from%20data%20rather%20than%20man-made%20process%20models.%22&resultType=core": "epmc-search-D1.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=5&query=%22Unattended%20RPA%20bots%2C%20on%20the%20other%20hand%2C%20execute%20scripts%20without%20human%20involvement%20and%20do%20not%20take%20inputs%20during%20their%20execution.%22&resultType=core": "epmc-search-A1.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=5&query=%22We%20compute%20a%20set%20of%20metrics%20such%20as%20the%20minimum%2C%20median%2C%20maximum%20time%20of%20events%2C%20and%20mark%20them%20after%20the%20event%27s%20name.%22&resultType=core": "epmc-search-C2-straight.json",
+ "https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&pageSize=5&query=%22We%20compute%20a%20set%20of%20metrics%20such%20as%20the%20minimum%2C%20median%2C%20maximum%20time%20of%20events%2C%20and%20mark%20them%20after%20the%20event%E2%80%99s%20name.%22&resultType=core": "epmc-search-C2-curly.json",
+ "https://zenodo.org/api/records/21373046": "zenodo-21373046.json",
+ "https://zenodo.org/api/records/21373047": "zenodo-21373047.json"
+}

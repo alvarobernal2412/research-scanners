@@ -1,0 +1,9 @@
+{
+ "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=%22Unattended%20RPA%20bots%2C%20on%20the%20other%20hand%2C%20execute%20scripts%20without%20human%20involvement%20and%20do%20not%20take%20inputs%20during%20their%20execution.%22&format=json&resultType=core&pageSize=5",
+ "method": "GET",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json;charset=UTF-8"
+ },
+ "body_b64": "eyJ2ZXJzaW9uIjoiNi45IiwiaGl0Q291bnQiOjAsInJlcXVlc3QiOnsicXVlcnlTdHJpbmciOiJcIlVuYXR0ZW5kZWQgUlBBIGJvdHMsIG9uIHRoZSBvdGhlciBoYW5kLCBleGVjdXRlIHNjcmlwdHMgd2l0aG91dCBodW1hbiBpbnZvbHZlbWVudCBhbmQgZG8gbm90IHRha2UgaW5wdXRzIGR1cmluZyB0aGVpciBleGVjdXRpb24uXCIiLCJyZXN1bHRUeXBlIjoiY29yZSIsImN1cnNvck1hcmsiOiIqIiwicGFnZVNpemUiOjUsInNvcnQiOiIiLCJzeW5vbnltIjpmYWxzZX0sInJlc3VsdExpc3QiOnsicmVzdWx0IjpbXX19"
+}

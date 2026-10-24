@@ -1,0 +1,12 @@
+{
+ "url": "https://api.core.ac.uk/v3/search/works/?q=%28%22Process%20mining%20has%20an%20advantage%20over%20other%20mapping%20techniques%20as%20it%20uses%20factual%20observations%20retrieved%20from%20data%20rather%20than%20man-made%20process%20models.%22%29&limit=5",
+ "method": "GET",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json",
+  "x-ratelimit-limit": "10",
+  "x-ratelimit-remaining": "9",
+  "x-ratelimit-retry-after": "2026-10-24T04:27:19+0000"
+ },
+ "body_b64": "eyJ0b3RhbEhpdHMiOjAsImxpbWl0Ijo1LCJvZmZzZXQiOjAsInJlc3VsdHMiOltdLCJzZWFyY2hJZCI6IjE2Y2ZmN2VmMGZmMzEzNjIxNzUzZTcwYzUwMjA1NTBmIn0="
+}

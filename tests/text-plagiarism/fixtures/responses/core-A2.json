@@ -1,0 +1,12 @@
+{
+ "url": "https://api.core.ac.uk/v3/search/works/?q=%28%22The%20events%20that%20do%20not%20share%20any%20data%20attributes%20and%2For%20values%20or%20originate%20from%20uncommon%20sources%20most%20likely%20constitute%20noise.%22%29&limit=5",
+ "method": "GET",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json",
+  "x-ratelimit-limit": "10",
+  "x-ratelimit-remaining": "10",
+  "x-ratelimit-retry-after": "2026-10-24T04:27:12+0000"
+ },
+ "body_b64": "eyJ0b3RhbEhpdHMiOjAsImxpbWl0Ijo1LCJvZmZzZXQiOjAsInJlc3VsdHMiOltdLCJzZWFyY2hJZCI6IjEwNTVmYWY2MzNjMjc4ZjA1ODJkYzVhOWNhZjU0Nzc4In0="
+}

@@ -1,0 +1,39 @@
+{
+ "workA": {
+  "doi": "10.1007/s12599-020-00641-4",
+  "title": "Robotic Process Mining: Vision and Challenges",
+  "license": "CC BY 4.0",
+  "ref_string": "Leno, V., Polyvyanyy, A., Dumas, M., La Rosa, M., Maggi, F.M.: Robotic process mining: vision and challenges. Business & Information Systems Engineering 63(3), 301-314 (2021)",
+  "passage": "An alternative approach is to use time-based heuristics to set a limit for the total duration of a session or the maximal allowed time difference between two events. However, this approach is unreliable since users may be involved in different activities when performing a task.",
+  "control_sentence": "The events that do not share any data attributes and/or values or originate from uncommon sources most likely constitute noise.",
+  "miss_sentence": "Unattended RPA bots, on the other hand, execute scripts without human involvement and do not take inputs during their execution."
+ },
+ "pmc": {
+  "pmcid": "PMC8529480",
+  "doi": "10.2196/27499",
+  "license": "CC BY 4.0",
+  "sentences": [
+   "Process mining has an advantage over other mapping techniques as it uses factual observations retrieved from data rather than man-made process models.",
+   "As a result, process mining further identifies the health care providers involved and the nature of their involvement in terms of specialties."
+  ]
+ },
+ "apostrophe": {
+  "pmcid": "PMC8684667",
+  "doi": "10.1186/s12911-021-01725-1",
+  "sentence": "We compute a set of metrics such as the minimum, median, maximum time of events, and mark them after the event’s name."
+ },
+ "t1": {
+  "doi": "10.1007/978-3-032-40795-5_31",
+  "sentence": "The proposed conceptual model provides a new understanding of analytic provenance by formalizing the highly iterative and non-linear realities of exploratory process mining.",
+  "ref_string": "Bernal Caunedo, A.J., Franceschetti, M., Völzer, H., Resinas, M., Weber, B.: A Conceptual Model to Enhance Process Mining Analysis with Provenance. In: Lecture Notes in Computer Science (2026)"
+ },
+ "t5": {
+  "sentence": "Process mining is a family of techniques that extract knowledge from event logs."
+ },
+ "t2_standin": {
+  "sentence": "In the preliminary stage the raw event streams are reshaped into tidy tables that suit the intended question and the chosen mining technique."
+ },
+ "book_ref": {
+  "ref_string": "Tukey, J. W. (1977). Exploratory Data Analysis. Addison-Wesley."
+ }
+}
