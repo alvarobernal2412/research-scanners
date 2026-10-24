@@ -30,11 +30,13 @@ It reports evidence only. It gives no legal verdict, no "percent plagiarised" sc
 
 ## How to use
 
+`W` below is the absolute `--workdir` of the run (e.g. `/abs/path/outside/the/repo/run1`); keep it outside the repository, because it holds the extracted text of your document.
+
 Ask Claude, for example: "check this thesis chapter for copied passages" or "does this draft quote its sources properly?". Claude runs the scripts, shows you what would be sent, waits for your explicit yes, and then presents a Markdown report. Directly:
 
 ```
 pip install -r requirements.txt
-python -I scripts/prepare.py draft.pdf [--corpus papers/] [--corpus related.bib]
+python -I scripts/prepare.py draft.pdf --workdir /abs/path/outside/the/repo/run1 [--corpus papers/] [--corpus related.bib]
 python -I scripts/strict.py plan --workdir W        # shows the next round and its sha256
 python -I scripts/strict.py run  --workdir W --plan <plan file> --sha256 <hash>
 # repeat plan/run until plan prints {"done": true}
@@ -89,7 +91,7 @@ Dashed edges send data over the network. Everything else runs on your machine. T
 ## What leaves your machine
 
 - **Strict tier (default):** DOIs, arXiv ids, URLs of open copies and **reference-list strings** (published bibliographic data) to Crossref, OpenAlex, Zenodo and the hosts of open-access copies. Never a sentence of your document.
-- **Open tier (opt-in per run):** only the phrases you saw in the preview and approved, to Europe PMC and OpenAlex (and CORE, Open Library or Brave if you ask), at most 10 sentences and 10 requests per backend per run. Verification then fetches the open text of each hit from its public URL.
+- **Open tier (opt-in per run):** only the phrases you saw in the preview and approved, to Europe PMC and OpenAlex (and CORE, Open Library or Brave if you ask), at most 10 sentences per run (one request per sentence per backend). The optional second OpenAlex window is a separate plan of up to 10 further requests that you approve on its own. Verification then fetches the open text of each hit from its public URL.
 - **Local corpus files:** nothing.
 - Optional keys, all **off unless set**: `OPENALEX_API_KEY`, `CORE_API_KEY`, `BRAVE_API_KEY` (Brave is keyed-only), plus `TEXT_PLAGIARISM_MAILTO` (Crossref User-Agent) and `TEXT_PLAGIARISM_CACHE`. Open-tier requests carry no key or address on a keyless route unless you pass `--use-keys`. Plans store `{ENV_NAME}` placeholders, never values.
 - The scripts cannot tell you from Claude: approval is relayed by Claude and gated by Claude Code's permission prompt on each `run` command. The guarantee covers only the scripts' own requests; text that Claude reads is already in the model's context.
@@ -110,12 +112,17 @@ Dashed edges send data over the network. Everything else runs on your machine. T
 - **Europe PMC** covers open-access biomedical literature only. **CORE** body-text coverage is unverified (opt-in). **Open Library** returns snippets only, so its hits are unverified candidates. The **Brave** response shape follows its documentation and was never recorded, because no key was available.
 - **Paraphrase and translation are not detected.** Only verbatim and near-verbatim runs are reported: at least 12 words in total with at most 3 differing words between runs (8 words for hits the open tier verified).
 - PDFs whose text extraction loses the spaces are detected and force `insufficient_coverage`; scanned PDFs are not read (no OCR).
+- **Citation forms not recognised:** superscript and bare numeric citations (`text¹`, `text 1`) are not seen as citations, so a cited copy may be reported as `unattributed`; footnotes are excluded only in Markdown (`[^1]:` definitions), not in PDF, DOCX or plain text.
+- **Deferred acceptance fixtures:** cases T1b, T1c-OA and T1d have no recorded responses. They need live recording of the real services with the user's approval, and no fixture was invented for them. Until then the behaviour they would cover is tested only with synthetic responses marked as such.
+- **Section detection** on PDF/TXT/DOCX is heuristic: a numbered or lettered heading ends the reference list, but an unusual heading style may be missed. A runtime guard refuses any strict request that shares a 5-word window with non-reference text, as a second line of defence.
 - Thresholds are provisional constants until calibrated on your own cases. Precision and recall are measured only on the small labelled set in `tests/text-plagiarism/fixtures/cases/` (`evaluate.py`), which is not a benchmark.
 
 ## Quality checks
 
-236 automated tests in `tests/text-plagiarism/` (run `python -m pytest tests/text-plagiarism -q`) never touch the network: sockets are blocked, HTTP is injected and answered from responses recorded once from the real services (`tests/text-plagiarism/fixtures/`, with provenance and licenses in `PROVENANCE.md`). They cover extraction, section detection, the winnowing overlap, attribution, the approval gate, the transport, every backend, the strict and open pipelines, the corpus, the report and the evaluation harness. `scripts/evaluate.py` scores labelled cases offline and checks three hard gates: privacy, honest coverage and no verdict.
+258 automated tests in `tests/text-plagiarism/` (run `python -m pytest tests/text-plagiarism -q`) never touch the network: sockets are blocked, HTTP is injected and answered from responses recorded once from the real services (`tests/text-plagiarism/fixtures/`, with provenance and licenses in `PROVENANCE.md`). They cover extraction, section detection, the winnowing overlap, attribution, the approval gate, the transport, every backend, the strict and open pipelines, the corpus, the report and the evaluation harness. `scripts/evaluate.py` scores labelled cases offline and checks three hard gates: privacy, honest coverage and no verdict.
 
 ## License
+
+`data/common_words.txt` (420 common English and academic words, used only to score how distinctive a sentence is) was written for this project; no third-party word list is recorded as its source, so confirm that before redistributing it under another license.
 
 Apache-2.0 (see the repository `LICENSE`). Test fixtures quoted from CC BY 4.0 papers keep their license; see `tests/text-plagiarism/fixtures/PROVENANCE.md` and the repository `NOTICE`.

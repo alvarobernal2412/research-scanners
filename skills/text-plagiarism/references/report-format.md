@@ -4,8 +4,8 @@
 
 ## coverage
 
-- `status`: `findings`, `no_overlap_found_in_checked_sources` or `insufficient_coverage`. The word "clean" and any score or verdict never appear. `no_overlap_found_in_checked_sources` requires no findings, enough checked sources (at least 3 full texts and at least half of the cited and supplied works, or at least 10 open-tier sentences queried with a backend that had no errors), no glued-word warning, no failed service request in the resolve, locate, zenodo, search or verify rounds, and no corpus item that failed to load. Otherwise the status is `insufficient_coverage`.
-- `status_reasons`: why coverage was insufficient.
+- `status`: `findings`, `no_overlap_found_in_checked_sources` or `insufficient_coverage`. The word "clean" and any score or verdict never appear. `no_overlap_found_in_checked_sources` requires no findings, enough checked sources (at least 3 full texts and every cited or supplied work checked, except works known to have no open copy; or at least 10 open-tier sentences queried with an error-free backend, none left unqueried over the cap, and no obtainable cited work unchecked), no glued-word warning, no failed service request in the resolve, locate, zenodo, search or verify rounds, and no corpus item that failed to load. Otherwise the status is `insufficient_coverage`.
+- `status_reasons`: why coverage was insufficient, and, in every status, how many cited or supplied works were checked when that is not all of them.
 - `tiers_used`: `strict`, `open` (empty when only `prepare.py` ran).
 - `extraction`: `fmt`, `pages`, `warnings` (`glued_words`, `references_not_found`).
 - `sections`: `id`, `heading`, `kind`, `checked_strict`, `checked_open`, `excluded_reason`.
