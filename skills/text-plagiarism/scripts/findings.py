@@ -85,7 +85,31 @@ def _overlap(a: tuple[int, int], b: tuple[int, int]) -> int:
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
 
 
-def compare_sources(workdir: Path, recs: list[SourceRec], min_words: int = MIN_MATCH_WORDS) -> dict:
+def _section_breaks(tokens: list[Token], sections: list[Section]) -> list[int]:
+    """Token indices where a heading or a section begins, or where the text after a heading begins."""
+    cuts = set()
+    for s in sections:
+        cuts.add(s.start_line)
+        if s.heading:
+            cuts.add(s.start_line + 0.5)       # the first line after the heading
+    out = set()
+    for cut in cuts:
+        for i, t in enumerate(tokens):
+            if t.line >= cut:
+                out.add(i)
+                break
+    return sorted(i for i in out if i > 0)
+
+
+def compare_sources(workdir: Path, recs: list[SourceRec], min_words: int = MIN_MATCH_WORDS,
+                    anchors: dict[str, list[tuple[int, int]]] | None = None, anchor_min_words: int | None = None,
+                    with_spans: bool = False) -> dict:
+    """Compare the document with the sources.
+
+    `anchors` maps a source id to document token ranges (verified candidate sentences); only there is
+    `anchor_min_words` (< min_words) enough for a match. `with_spans` keeps each finding's `_span`
+    (document token range) for callers that post-process findings.
+    """
     doc, sections, _ = load_doc(workdir)
     tokens = tokenize(doc.lines)
     excluded = excluded_lines(doc, sections)
@@ -98,7 +122,13 @@ def compare_sources(workdir: Path, recs: list[SourceRec], min_words: int = MIN_M
     for rec in recs:
         by_id[rec.id] = rec
         index.add(rec.id, [t.key for t in tokenize(rec.lines)])
-    found = index.find(keys, min_words)
+    low = min(min_words, anchor_min_words) if anchors and anchor_min_words else min_words
+    found = index.find(keys, low, _section_breaks(tokens, sections))
+    if low < min_words:
+        found = {sid: [m for m in ms if m.matched_words >= min_words
+                       or any(m.doc_start < hi and lo < m.doc_end for lo, hi in anchors.get(sid, []))]
+                 for sid, ms in found.items()}
+        found = {sid: ms for sid, ms in found.items() if ms}
     entries: list[tuple[SourceRec, Match]] = [(by_id[sid], m) for sid, ms in found.items() for m in ms]
     entries.sort(key=lambda e: (e[1].doc_start, e[0].id))
     result = {"findings": [], "informational": [], "boilerplate": [], "sources_compared": [
@@ -110,6 +140,8 @@ def compare_sources(workdir: Path, recs: list[SourceRec], min_words: int = MIN_M
         att = classify(span, tokens, sentences, mask, citations, rec.source_keys)
         finding = make_finding(doc, sections, tokens, m, rec, att, rec.ref_n,
                                kind="self_overlap" if rec.relation == "own" else None)
+        if with_spans:
+            finding["_span"] = span
         if len(sources_over) >= BOILERPLATE_MIN_SOURCES:
             result["boilerplate"].append(finding)
         elif att.status == "quoted_cited":

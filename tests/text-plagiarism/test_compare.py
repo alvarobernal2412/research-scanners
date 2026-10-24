@@ -109,3 +109,21 @@ def test_spike_sentences_match_recorded_pdf_text():
         doc = filler(8, 1) + K(sentence) + filler(8, 2)
         ms = find_matches(doc, src)
         assert ms and max(m.longest_run for m in ms) >= len(K(sentence)) - 1, sentence
+
+
+def test_near_verbatim_does_not_merge_across_a_break():
+    a, b = filler(12, 21), filler(12, 22)
+    gap_doc, gap_src = filler(2, 23), filler(2, 24)
+    doc, src = a + gap_doc + b, a + gap_src + b
+    assert len(find_matches(doc, src)) == 1              # merged without a break
+    ms = find_matches(doc, src, breaks=[12 + 1])         # a section boundary inside the gap
+    assert len(ms) == 2 and all(m.kind == "verbatim" for m in ms)
+    assert len(find_matches(doc, src, breaks=[0, 40])) == 1
+
+
+def test_interleaved_run_on_another_diagonal_does_not_split_a_merge():
+    a, b, gap = filler(12, 31), filler(12, 32), filler(2, 33)
+    doc = a + filler(2, 34) + b
+    src = a + gap + b + filler(5, 35) + a[3:9] + filler(5, 36)     # a repeat of the middle of A elsewhere
+    ms = find_matches(doc, src)
+    assert len(ms) == 1 and ms[0].kind == "near_verbatim" and ms[0].matched_words == 24

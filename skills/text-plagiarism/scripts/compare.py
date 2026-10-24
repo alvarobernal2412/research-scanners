@@ -7,6 +7,7 @@ exact runs; runs separated by at most MAX_GAP_WORDS words on both sides are merg
 """
 from __future__ import annotations
 
+import bisect
 import hashlib
 import sys
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ WINNOW_W = 4
 MIN_MATCH_WORDS = 12
 MIN_CONTENT_WORDS = 5
 MAX_GAP_WORDS = 3
+MERGE_LOOKBACK = 8          # earlier groups a run may still join (runs on other diagonals can interleave)
 MAX_SEED_POSITIONS = 30     # a fingerprint repeated more often than this on either side is not a useful seed
 
 
@@ -86,20 +88,32 @@ def runs_from_seeds(doc: list[str], src: list[str], seeds: list[tuple[int, int]]
     return runs
 
 
-def build_matches(doc: list[str], runs: list[tuple[int, int, int]], min_words: int = MIN_MATCH_WORDS) -> list[Match]:
+def _crosses_break(breaks: list[int] | None, lo: int, hi: int) -> bool:
+    """A section boundary (a document word index where a new heading or section starts) in [lo, hi]."""
+    if not breaks:
+        return False
+    i = bisect.bisect_left(breaks, lo)
+    return i < len(breaks) and breaks[i] <= hi
+
+
+def build_matches(doc: list[str], runs: list[tuple[int, int, int]], min_words: int = MIN_MATCH_WORDS,
+                  breaks: list[int] | None = None) -> list[Match]:
     if not runs:
         return []
     runs = sorted(set(runs))
     groups: list[list[tuple[int, int, int]]] = []
     for run in runs:
         placed = False
-        if groups:
-            last = groups[-1][-1]
-            doc_gap = run[0] - (last[0] + last[2])
+        for g in reversed(groups[-MERGE_LOOKBACK:]):
+            last = g[-1]
+            doc_end = last[0] + last[2]
+            doc_gap = run[0] - doc_end
             src_gap = run[1] - (last[1] + last[2])
-            if 0 <= doc_gap <= MAX_GAP_WORDS and 0 <= src_gap <= MAX_GAP_WORDS:
-                groups[-1].append(run)
+            if (0 <= doc_gap <= MAX_GAP_WORDS and 0 <= src_gap <= MAX_GAP_WORDS
+                    and not _crosses_break(breaks, doc_end, run[0])):
+                g.append(run)
                 placed = True
+                break
         if not placed:
             groups.append([run])
     matches: list[Match] = []
@@ -113,10 +127,12 @@ def build_matches(doc: list[str], runs: list[tuple[int, int, int]], min_words: i
         first, last = g[0], g[-1]
         matches.append(Match(first[0], last[0] + last[2], first[1], last[1] + last[2], matched,
                              max(r[2] for r in g), "verbatim" if len(g) == 1 else "near_verbatim"))
+    matches.sort(key=lambda m: (m.doc_start, m.src_start))
     return matches
 
 
-def find_matches(doc_keys: list[str], src_keys: list[str], min_words: int = MIN_MATCH_WORDS) -> list[Match]:
+def find_matches(doc_keys: list[str], src_keys: list[str], min_words: int = MIN_MATCH_WORDS,
+                 breaks: list[int] | None = None) -> list[Match]:
     fd, fs = fingerprints(doc_keys), fingerprints(src_keys)
     seeds: list[tuple[int, int]] = []
     for h, dpos in fd.items():
@@ -124,7 +140,7 @@ def find_matches(doc_keys: list[str], src_keys: list[str], min_words: int = MIN_
         if not spos or len(dpos) > MAX_SEED_POSITIONS or len(spos) > MAX_SEED_POSITIONS:
             continue
         seeds.extend((d, s) for d in dpos for s in spos)
-    return build_matches(doc_keys, runs_from_seeds(doc_keys, src_keys, seeds), min_words)
+    return build_matches(doc_keys, runs_from_seeds(doc_keys, src_keys, seeds), min_words, breaks)
 
 
 class SourceIndex:
@@ -142,7 +158,8 @@ class SourceIndex:
             bucket = self.inverted.setdefault(h, [])
             bucket.extend((source_id, p) for p in positions)
 
-    def find(self, doc_keys: list[str], min_words: int = MIN_MATCH_WORDS) -> dict[str, list[Match]]:
+    def find(self, doc_keys: list[str], min_words: int = MIN_MATCH_WORDS,
+             breaks: list[int] | None = None) -> dict[str, list[Match]]:
         seeds: dict[str, list[tuple[int, int]]] = {}
         for h, dpos in fingerprints(doc_keys).items():
             hits = self.inverted.get(h)
@@ -157,7 +174,7 @@ class SourceIndex:
                 seeds.setdefault(sid, []).extend((d, s) for d in dpos for s in spos)
         out: dict[str, list[Match]] = {}
         for sid, sd in seeds.items():
-            matches = build_matches(doc_keys, runs_from_seeds(doc_keys, self.keys[sid], sd), min_words)
+            matches = build_matches(doc_keys, runs_from_seeds(doc_keys, self.keys[sid], sd), min_words, breaks)
             if matches:
                 out[sid] = matches
         return out
