@@ -92,6 +92,29 @@ flowchart TD
     OUT --> MD["Claude writes the Markdown report"]
 ```
 
+Every optional tier goes through the approval gate, which is how nothing is sent without your yes:
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant Claude
+    participant Plan as plan script
+    participant Run as run script
+    participant Svc as Public service
+
+    You->>Claude: Check this repository, allow SCANOSS on src/
+    Claude->>Plan: plan, with the files or sections you chose
+    Plan-->>Claude: Query file with every exact request and its sha256
+    Claude-->>You: Preview: exactly what would be sent, to whom, and what it reveals
+    You->>Claude: Approve, or strike requests you do not want
+    Claude->>Run: run with the approved sha256
+    Run->>Run: Refuse if the plan changed or a request is not in it
+    Run->>Svc: Only the approved requests
+    Svc-->>Run: Matches
+    Run-->>Claude: JSON result including every request that was sent
+    Claude-->>You: Report that lists the services contacted
+```
+
 Dashed edges are the only places where data leaves the machine, and each of them sits behind the plan, approval, run gate. The approval is your yes, relayed by Claude, plus Claude Code's permission prompt for the `run` command; the scripts cannot tell you from Claude. `report.py` makes no network calls.
 
 ## Privacy: the three tiers and what leaves the machine

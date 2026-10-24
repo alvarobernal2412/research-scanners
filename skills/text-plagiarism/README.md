@@ -86,6 +86,29 @@ flowchart TD
     FIND --> REP["report.py<br/>coverage first, then findings,<br/>disclosure of every request, disclaimer"]
 ```
 
+Every optional tier goes through the approval gate, which is how nothing is sent without your yes:
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant Claude
+    participant Plan as plan script
+    participant Run as run script
+    participant Svc as Public service
+
+    You->>Claude: Check my thesis, allow the open tier on chapter 2
+    Claude->>Plan: plan, with the sections you chose
+    Plan-->>Claude: Query file with every exact request and its sha256
+    Claude-->>You: Preview: exactly what would be sent, to whom, and what it reveals
+    You->>Claude: Approve, or strike requests you do not want
+    Claude->>Run: run with the approved sha256
+    Run->>Run: Refuse if the plan changed or a request is not in it
+    Run->>Svc: Only the approved requests
+    Svc-->>Run: Matches
+    Run-->>Claude: JSON result including every request that was sent
+    Claude-->>You: Report that lists the services contacted
+```
+
 Dashed edges send data over the network. Everything else runs on your machine. The approval diamonds are the plan/run gate: a request that is not in the approved plan is refused before any connection is opened.
 
 ## What leaves your machine
