@@ -237,7 +237,99 @@ def _from_pdf(data: bytes) -> list[Line]:
     return out
 
 
-_HANDLERS = {"md": _from_md, "txt": _from_txt, "docx": _from_docx, "html": _from_html,
+_ENTITY = re.compile(r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)[A-Za-z][A-Za-z0-9]*;")
+_SKIP_JATS = {"xref", "table-wrap", "fig", "ref-list", "back", "supplementary-material", "inline-formula",
+              "disp-formula", "label", "object-id"}
+
+
+def _jats_root(data: bytes):
+    import xml.etree.ElementTree as ET
+
+    text = _decode(data)
+    text = re.sub(r"<!DOCTYPE[^>\[]*(?:\[[^\]]*\])?[^>]*>", "", text, count=1)
+    text = _ENTITY.sub(" ", text)
+    try:
+        return ET.fromstring(text.encode("utf-8"))
+    except ET.ParseError:
+        raise ExtractError("unreadable_file", "cannot parse JATS XML") from None
+
+
+def _local(tag) -> str:
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
+
+
+def _jats_text(el) -> str:
+    parts: list[str] = []
+
+    def walk(node):
+        if _local(node.tag) in _SKIP_JATS:
+            if node.tail:
+                parts.append(node.tail)
+            return
+        if node.text:
+            parts.append(node.text)
+        for child in node:
+            walk(child)
+        if node.tail:
+            parts.append(node.tail)
+
+    if el.text:
+        parts.append(el.text)
+    for child in el:
+        walk(child)
+    text = re.sub(r"\s+", " ", "".join(parts))
+    text = re.sub(r"\[[\s,;–‐-]*\]", "", text)     # emptied citation brackets
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _from_jats(data: bytes) -> list[Line]:
+    root = _jats_root(data)
+    body = next((e for e in root.iter() if _local(e.tag) == "body"), None)
+    rows: list[tuple[str, int | None]] = []
+
+    def walk(sec, depth):
+        for child in sec:
+            tag = _local(child.tag)
+            if tag == "title":
+                rows.append((_jats_text(child), min(depth, 6)))
+            elif tag == "p":
+                rows.append((_jats_text(child), None))
+                rows.append(("", None))
+            elif tag == "sec":
+                walk(child, depth + 1)
+
+    if body is not None:
+        walk(body, 1)
+    return [Line(i, t, heading_level=h) for i, (t, h) in enumerate(rows, 1)]
+
+
+def jats_info(data: bytes) -> dict:
+    """Title, DOI, PMCID and license of a JATS article (license from ali:license_ref or <license>)."""
+    root = _jats_root(data)
+    info: dict = {"title": None, "doi": None, "pmcid": None, "license": None}
+    for e in root.iter():
+        tag = _local(e.tag)
+        if tag == "article-id":
+            kind = e.get("pub-id-type")
+            if kind == "doi" and not info["doi"]:
+                info["doi"] = (e.text or "").strip().lower()
+            elif kind == "pmcid" and not info["pmcid"]:
+                info["pmcid"] = (e.text or "").strip()
+        elif tag == "article-title" and not info["title"]:
+            info["title"] = _jats_text(e)
+        elif tag == "license_ref" and not info["license"]:
+            info["license"] = (e.text or "").strip()
+        elif tag == "license" and not info["license"]:
+            link = e.get("{http://www.w3.org/1999/xlink}href")
+            info["license"] = link or _jats_text(e) or None
+    lic = info["license"] or ""
+    m = re.search(r"creativecommons\.org/(?:licenses|publicdomain)/([a-z\-]+)/([\d.]+)", lic)
+    if m:
+        info["license"] = f"CC {m.group(1).upper()} {m.group(2)}".replace("ZERO", "0")
+    return info
+
+
+_HANDLERS = {"jats": _from_jats, "md": _from_md, "txt": _from_txt, "docx": _from_docx, "html": _from_html,
              "tex": _from_tex, "pdf": _from_pdf}
 
 
