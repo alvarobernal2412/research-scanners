@@ -694,3 +694,25 @@ def test_recorded_revisions_carry_bodies():
     assert revs
     items = [it for v in revs for it in json.loads((RESPONSES / v["file"]).read_text(encoding="utf-8"))["items"]]
     assert any(isinstance(it.get("body"), str) and it.get("content_license") for it in items)
+
+
+def test_revisions_has_more_falls_back_to_current_licence_at_low_confidence(tmp_path):
+    root = case(tmp_path, "C1")
+    plan = se.make_plan(root, ["C1"])
+    idx = json.loads((RESPONSES / "index.json").read_text(encoding="utf-8"))
+    revs = {}
+    for k, v in idx.items():
+        if "/revisions" in k:
+            for it in json.loads((RESPONSES / v["file"]).read_text(encoding="utf-8"))["items"]:
+                revs.setdefault(it["post_id"], []).append(it)
+
+    class Paged(FakeSE):
+        def wrap(self, items, **extra):
+            return super().wrap(items, has_more=bool(items) and "post_id" in items[0], **extra)
+
+    # has_more on the revisions follow-up: the list may lack the earliest revision, so it is not trusted
+    res, _ = run_plan(tmp_path, plan, root, Paged(search=hit_c1, revisions=revs))
+    assert res["matches"] and "post_id" not in str(res["errors"])
+    assert all(m["candidate"]["licenses"][0]["evidence"] == "so_answer_current"
+               and m["candidate"]["licenses"][0]["confidence"] == "low"
+               and "incomplete" in m["candidate"]["note"] for m in res["matches"])

@@ -697,12 +697,19 @@ def run(plan_path: Path, approved_sha256: str, root: Path, opener=None, sleep=ti
 
     # ---- revisions of the answers that matched (licence per revision)
     revisions: dict = {}
+    rev_incomplete: set = set()           # answers whose revision list was cut off (has_more) or not fetched
     matched_ids = sorted({h[1]["answer_id"] for h in hits})
     if matched_ids and "revisions" in templates:
         for n, chunk in enumerate(_chunks(matched_ids, FOLLOWUP_IDS), 1):
             url = templates["revisions"].replace("{ids}", ";".join(map(str, chunk)))
             data = sess.get(f"revisions-{n}", url)
             if data is None:
+                rev_incomplete.update(chunk)
+                continue
+            if data.get("has_more"):
+                # the follow-up is not paginated: the earliest revision may be missing, so none of this
+                # chunk's revision lists is trusted to pick the licence
+                rev_incomplete.update(chunk)
                 continue
             for it in data["items"]:
                 if isinstance(it, dict) and type(it.get("post_id")) is int:
@@ -711,8 +718,11 @@ def run(plan_path: Path, approved_sha256: str, root: Path, opener=None, sleep=ti
     for key, ans, m, user_tokens, lang in sorted(hits, key=lambda h: (h[0], h[1]["answer_id"])):
         pid = ans["answer_id"]
         rel, start, _end = key
+        incomplete = pid in rev_incomplete
         revs = revisions.get(pid)
         licenses = resolve_license(ans, revs, user_tokens, lang)
+        if incomplete:
+            licenses = [dict(l, confidence="low") for l in licenses]
         revision = licenses[0].get("revision") if licenses and licenses[0]["evidence"] == "so_revision" else None
         lic_out = [{k: v for k, v in lic.items() if k != "revision"} for lic in licenses]
         l0, l1 = token_line_span(user_tokens, m.a_start, m.a_end)
@@ -723,6 +733,9 @@ def run(plan_path: Path, approved_sha256: str, root: Path, opener=None, sleep=ti
             note = ("Matched the current text of the answer; Stack Overflow licences are per revision, so the "
                     "licence shown is the answer's current one" +
                     (" and the date rule is listed as a fallback." if len(lic_out) > 1 else "."))
+        if incomplete:
+            note += (" The revision history was incomplete, so the licence of the revision that holds your code "
+                     "could not be determined; confidence is low.")
         cand = Candidate(origin_url=f"https://stackoverflow.com/a/{pid}", kind="stackoverflow", backend="stackexchange",
                          author=author, author_url=author_url, date=_iso_date(ans.get("creation_date")),
                          revision=revision, licenses=lic_out, matched_pct=round(m.coverage * 100, 1),
