@@ -20,11 +20,11 @@ from acquire import text_from_response  # noqa: E402
 from approval import PlannedRequest  # noqa: E402
 from attribute import doi_key  # noqa: E402
 from compare import find_matches  # noqa: E402
-from extract import Line, jats_info  # noqa: E402
+from extract import ExtractError, Line, extract_bytes, jats_info  # noqa: E402
 from findings import SourceRec, compare_sources, state_entries  # noqa: E402
 from net import Response, cache_root  # noqa: E402
 from open_tier import Candidate, load_open_state  # noqa: E402
-from textnorm import tokenize  # noqa: E402
+from textnorm import GLUED_MAX_RATIO, glued_ratio, tokenize  # noqa: E402
 
 VERIFY_MIN_RUN_WORDS = 8
 VERIFY_MIN_FRACTION = 0.8
@@ -57,10 +57,20 @@ def plan_verification(state: dict) -> list[PlannedRequest]:
     return reqs
 
 
+def _is_web_hit(state: dict, url: str) -> bool:
+    return any(h.get("fulltext_url") == url and h.get("backend") == "brave" for _, _, _, h in _all_hits(state))
+
+
 def apply_fetch(state: dict, req: PlannedRequest, resp: Response, workdir: Path) -> None:
     fetched = state.setdefault("verify", {}).setdefault("fetched", {})
     entry = {"subject": req.subject, "status": None, "text_path": None, "license": None, "error": resp.error}
     lines, reason = text_from_response(resp)
+    if lines is None and reason == "landing_page_only" and _is_web_hit(state, req.url):
+        try:       # a web page found by a search engine is the text itself: extract its visible text
+            doc = extract_bytes(resp.body, "html")
+            lines, reason = (doc.lines, None) if glued_ratio(tokenize(doc.lines)) <= GLUED_MAX_RATIO else (None, "low_text_quality")
+        except ExtractError:
+            reason = "no_text"
     if lines is None:
         entry["status"] = reason or "download_failed"
     else:
