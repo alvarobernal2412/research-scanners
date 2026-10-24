@@ -144,8 +144,23 @@ def split_sentences(lines: list[Line], tokens: list[Token]) -> list[Sentence]:
     def close(a: int, b: int):
         if b <= a:
             return
-        parts = [t.raw or by_no[t.line].text[t.start:t.end] for t in tokens[a:b]]
-        sentences.append(Sentence(" ".join(parts), a, b, tokens[a].line, tokens[b - 1].end_line))
+        first, last = tokens[a], tokens[b - 1]
+        i0, i1 = order[first.line], order[last.end_line]
+        pieces = []
+        for i in range(i0, i1 + 1):
+            text = lines[i].text
+            lo = first.start if i == i0 else 0
+            hi = last.end if i == i1 else len(text)
+            piece = text[lo:hi].strip()
+            if piece:
+                pieces.append(piece)
+        out = ""
+        for piece in pieces:      # rebuild across line breaks, joining line-end hyphenation
+            if out and out[-1] in _HYPHENS and len(out) > 1 and piece[:1].islower():
+                out = out[:-1] + piece
+            else:
+                out = f"{out} {piece}" if out else piece
+        sentences.append(Sentence(out, a, b, first.line, last.end_line))
 
     for i in range(1, len(tokens)):
         prev, cur = tokens[i - 1], tokens[i]
