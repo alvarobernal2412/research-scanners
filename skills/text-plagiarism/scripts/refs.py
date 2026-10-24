@@ -162,10 +162,10 @@ def _split(rows: list[tuple[int, str]]) -> list[RefEntry]:
     texts = [t for _, t in nonblank]
     if sum(1 for t in texts if _BIBITEM.match(t.strip())) >= 1:
         return _split_bibitems(nonblank)
-    if sum(1 for t in texts if _BRACKET.match(t)) >= 2:
+    if sum(1 for t in texts if _BRACKET.match(t)) >= 2 or _BRACKET.match(texts[0]):
         return _split_numbered(nonblank, _BRACKET)
-    dot_run = _sequential(texts)
-    if dot_run >= 2:
+    first = _DOTNUM.match(texts[0])
+    if _sequential(texts) >= 2 or (first and int(first.group(1)) == 1):
         return _split_numbered(nonblank, _DOTNUM)
     if sum(1 for t in texts if _BULLET.match(t)) >= 2:
         return _split_bullets(nonblank)

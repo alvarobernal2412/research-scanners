@@ -217,8 +217,8 @@ def plan_download(infos: list[SourceInfo]) -> list[PlannedRequest]:
 def settle(infos: list[SourceInfo]) -> None:
     """Mark sources with nothing left to try as not_obtained, with the most specific reason known."""
     for info in infos:
-        if info.status != "pending":
-            continue
+        if info.status != "pending" or (info.is_oa is None and not info.tried):
+            continue          # not located yet: nothing is known about its copies
         untried = [u for u in info.candidates if u not in info.tried]
         zenodo_left = [z for z in info.zenodo_ids if z not in info.zenodo_done]
         exhausted = len(info.tried) >= MAX_CANDIDATES_PER_SOURCE

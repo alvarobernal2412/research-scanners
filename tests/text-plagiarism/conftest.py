@@ -23,6 +23,17 @@ def no_network(monkeypatch):
 _LIGATURES = {"ﬀ": 1, "ﬁ": 2, "ﬂ": 3, "ﬃ": 4, "ﬄ": 5}
 
 
+@pytest.fixture(autouse=True)
+def isolated_env(monkeypatch, tmp_path):
+    """No keys or identities from the developer's environment; caches and run dirs under tmp_path."""
+    for name in ("OPENALEX_API_KEY", "CORE_API_KEY", "BRAVE_API_KEY", "TEXT_PLAGIARISM_MAILTO"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("TEXT_PLAGIARISM_CACHE", str(tmp_path / "_cache"))
+    import net
+
+    net.reset_rate_limits()
+
+
 def _esc(s: str) -> bytes:
     out = bytearray()
     for ch in s:
