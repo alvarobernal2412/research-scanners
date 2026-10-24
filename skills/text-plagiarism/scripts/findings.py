@@ -7,6 +7,7 @@ findings: their tokens are blanked before comparison.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,6 +42,7 @@ class SourceRec:
     source_keys: frozenset[str] = frozenset()
     ref_n: int | None = None
     relation: str | None = None          # corpus items: "related" | "own"
+    ref_doi: str | None = None           # DOI of the bibliography entry a local item was matched to
 
 
 def _section_of(sections: list[Section], line_no: int) -> str | None:
@@ -171,4 +173,88 @@ def strict_source_recs(workdir: Path) -> list[SourceRec]:
 
 
 def strict_findings(workdir: Path) -> dict:
-    return compare_sources(workdir, strict_source_recs(workdir))
+    return compare_sources(workdir, [r for r in strict_source_recs(workdir) if r.found_via != "user_corpus"])
+
+
+def _author_surname(authors: str | None) -> str | None:
+    if not authors:
+        return None
+    first = re.split(r"\s+and\s+|;|&", authors)[0].strip()
+    if "," in first:
+        return first.split(",")[0].strip().split()[-1] if first.split(",")[0].strip() else None
+    return first.split()[-1] if first.split() else None
+
+
+def _norm_text(text: str | None) -> str:
+    return " ".join(t.key for t in tokenize([Line(1, text or "")]))
+
+
+def match_entry(item, entries: list[RefEntry]) -> tuple[frozenset[str], int | None, str | None]:
+    """The bibliography entry a corpus item is: by DOI, then normalised title, then author-year."""
+    hit = None
+    if item.doi:
+        hit = next(((i, e) for i, e in enumerate(entries) if item.doi.lower() in {e.doi, e.resolved_doi}), None)
+    title = _norm_text(item.title)
+    if hit is None and title and len(title.split()) >= 3:
+        hit = next(((i, e) for i, e in enumerate(entries)
+                    if title == _norm_text(e.title) or title in _norm_text(e.text)), None)
+    if hit is None:
+        surname, year = _author_surname(item.authors), str(item.year) if item.year else None
+        if surname and year:
+            hit = next(((i, e) for i, e in enumerate(entries)
+                        if e.first_author and e.year and e.first_author.casefold() == surname.casefold()
+                        and e.year[:4] == year), None)
+    keys: set[str] = set()
+    ref_n = None
+    ref_doi = None
+    if hit is not None:
+        keys |= set(hit[1].keys())
+        ref_n = hit[1].n if hit[1].n is not None else hit[0] + 1
+        ref_doi = hit[1].doi or hit[1].resolved_doi
+    if item.doi:
+        keys.add(doi_key(item.doi))
+    return frozenset(keys), ref_n, ref_doi
+
+
+def corpus_local_recs(workdir: Path, entries: list[RefEntry]) -> list[SourceRec]:
+    import corpus
+
+    recs = []
+    for item in corpus.read_items(workdir):
+        if item.kind != "local" or item.status != "loaded":
+            continue
+        keys, ref_n, ref_doi = match_entry(item, entries)
+        recs.append(SourceRec(id=item.id, lines=corpus.local_lines(workdir, item.id), doi=item.doi, title=item.title,
+                              url=None if item.doi else f"file:{item.name}", license=item.license,
+                              found_via="user_corpus", source_keys=keys, ref_n=ref_n, relation=item.relation,
+                              ref_doi=ref_doi))
+    return recs
+
+
+def corpus_findings(workdir: Path) -> dict:
+    entries = state_entries(workdir)
+    recs = corpus_local_recs(workdir, entries) + [r for r in strict_source_recs(workdir) if r.found_via == "user_corpus"]
+    return compare_sources(workdir, recs)
+
+
+def combined_recs(workdir: Path) -> list[SourceRec]:
+    """Downloaded references plus corpus items; the same work (same DOI) is compared once, preferring the local file."""
+    entries = state_entries(workdir)
+    local = corpus_local_recs(workdir, entries)
+    local_dois = {(r.doi or r.ref_doi or "").lower() for r in local} - {""}
+    out = list(local)
+    for r in strict_source_recs(workdir):
+        if r.doi and r.doi.lower() in local_dois:
+            for l in local:
+                if (l.doi or l.ref_doi or "").lower() == r.doi.lower():
+                    l.source_keys = l.source_keys | r.source_keys
+                    l.ref_n = l.ref_n if l.ref_n is not None else r.ref_n
+                    l.license = l.license or r.license
+                    l.version = l.version or r.version
+            continue
+        out.append(r)
+    return out
+
+
+def combined_findings(workdir: Path) -> dict:
+    return compare_sources(workdir, combined_recs(workdir))

@@ -9,6 +9,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -52,7 +53,10 @@ class Sentence:
     line_end: int
 
 
+@lru_cache(maxsize=262144)
 def normalise_word(raw: str) -> str:
+    if raw.isascii() and raw.isalnum():
+        return raw.lower()
     w = unicodedata.normalize("NFKC", raw).casefold().translate(_QUOTES)
     w = w.translate(_HYPHEN_DEL)
     w = _NONWORD_EDGE.sub("", w)

@@ -43,7 +43,7 @@ def source_key(doi: str | None, arxiv: str | None) -> str:
     return doi.lower() if doi else f"arxiv:{arxiv.split('v')[0]}"
 
 
-def build_sources(entries: list, existing: list[acquire.SourceInfo]) -> list[acquire.SourceInfo]:
+def build_sources(entries: list, existing: list[acquire.SourceInfo], corpus_items=()) -> list[acquire.SourceInfo]:
     by_key = {s.key: s for s in existing}
     for i, e in enumerate(entries):
         doi = e.doi or e.resolved_doi
@@ -60,7 +60,39 @@ def build_sources(entries: list, existing: list[acquire.SourceInfo]) -> list[acq
             info.cand_meta[url] = {"license": None, "version": None}
             info.is_oa = True
         by_key[key] = info
+    for item in corpus_items:       # identifiers from --corpus join as extra cited-like sources
+        ident = item.identifier or ""
+        if item.doi:
+            key, doi, arxiv, url = item.doi.lower(), item.doi.lower(), None, None
+        elif ident.lower().startswith("arxiv:"):
+            arxiv = ident.split(":", 1)[1].split("v")[0]
+            key, doi, url = f"arxiv:{arxiv}", None, None
+        else:
+            key, doi, arxiv, url = f"url:{ident}", None, None, ident
+        if key in by_key:
+            continue        # the same work is already a reference: compared once
+        info = acquire.SourceInfo(key=key, ref_n=None, doi=doi, title=item.title, arxiv=arxiv,
+                                  found_via="user_corpus")
+        direct = url or (f"https://arxiv.org/pdf/{arxiv}" if arxiv else None)
+        if direct:
+            info.candidates.append(direct)
+            info.cand_meta[direct] = {"license": None, "version": None}
+            info.is_oa = True
+        by_key[key] = info
     return list(by_key.values())
+
+
+def _corpus_items(workdir: Path):
+    import corpus
+
+    return corpus.identifier_items(workdir)
+
+
+def _local_only(workdir: Path) -> dict:
+    import corpus
+
+    names = [i.name for i in corpus.read_items(workdir) if i.kind == "local" and i.status == "loaded"]
+    return {"count": len(names), "files": names}
 
 
 def _load_infos(state: dict) -> list[acquire.SourceInfo]:
@@ -83,7 +115,7 @@ def cmd_plan(workdir: Path) -> int:
     doc, _, _ = load_doc(workdir)
     state = load_state(workdir)
     entries = _entries(state, workdir)
-    infos = build_sources(entries, _load_infos(state))
+    infos = build_sources(entries, _load_infos(state), _corpus_items(workdir))
     acquire.settle(infos)
     for round_name in ROUNDS:
         reqs = _requests_for(round_name, entries, infos)
@@ -95,7 +127,11 @@ def cmd_plan(workdir: Path) -> int:
         n = len(list((workdir / "plans").glob("strict-*.json"))) + 1 if (workdir / "plans").is_dir() else 1
         path = workdir / "plans" / f"strict-{n:02d}-{round_name}.json"
         sha = write_plan(plan, path)
-        emit({"done": False, "round": round_name, "plan": str(path), "sha256": sha, "preview": preview(plan)})
+        pv = preview(plan)
+        local = _local_only(workdir)
+        if local["count"]:
+            pv["local_only"] = local          # compared on this machine only: nothing about them is in the plan
+        emit({"done": False, "round": round_name, "plan": str(path), "sha256": sha, "preview": pv})
         return 0
     state["sources"] = [asdict(i) for i in infos]
     _save_state(workdir, state)
@@ -116,7 +152,7 @@ def cmd_run(workdir: Path, plan_path: Path, sha256: str, opener=None) -> int:
     gate = Gate(plan)
     state = load_state(workdir)
     entries = _entries(state, workdir)
-    infos = build_sources(entries, _load_infos(state))
+    infos = build_sources(entries, _load_infos(state), _corpus_items(workdir))
     by_key = {i.key: i for i in infos}
     sleep = time.sleep if opener is None else (lambda s: None)
     cache = Cache(cache_root())
@@ -167,7 +203,7 @@ def cmd_run(workdir: Path, plan_path: Path, sha256: str, opener=None) -> int:
     if round_name == "resolve":
         refs_mod.apply_resolution(entries, responses)       # type: ignore[arg-type]
         state["references"] = [asdict(e) for e in entries]
-        infos = build_sources(entries, infos)
+        infos = build_sources(entries, infos, _corpus_items(workdir))
     acquire.settle(infos)
     state["sources"] = [asdict(i) for i in infos]
     state.setdefault("rounds", []).append({"round": round_name, "plan": plan_path.name, "sha256": sha256,
