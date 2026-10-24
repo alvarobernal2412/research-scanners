@@ -1,0 +1,239 @@
+[
+ {
+  "id": "C1",
+  "root": "cases/C1",
+  "include": [
+   "C1_so_2019_cc4.js"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://stackoverflow.com/a/58437909",
+   "license": "CC-BY-SA-4.0",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint",
+   "open"
+  ],
+  "note": "Stack Overflow answer pasted after 2018-05-02, no attribution"
+ },
+ {
+  "id": "C1p",
+  "root": "cases/C1p",
+  "include": [
+   "C1p_so_2018_cc4.py"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://stackoverflow.com/a/53954986",
+   "license": "CC-BY-SA-4.0",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint",
+   "open"
+  ],
+  "note": "Python answer from 2018-12, all revisions CC BY-SA 4.0"
+ },
+ {
+  "id": "C2",
+  "root": "cases/C2",
+  "include": [
+   "C2_so_2011_cc3.js"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://stackoverflow.com/a/7220510",
+   "license": "CC-BY-SA-3.0",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "open"
+  ],
+  "note": "Answer from 2011, last edited 2017 (CC BY-SA 3.0). SCANOSS returns an MIT GitHub copy instead; the open tier did not find the answer in the recorded run (its only rare identifier returned 60 unrelated results)"
+ },
+ {
+  "id": "C1b",
+  "root": "cases/C1b",
+  "include": [
+   "C1b_so_py_edited2022.py"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://stackoverflow.com/a/26853961",
+   "license": "CC-BY-SA-4.0",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "open"
+  ],
+  "note": "Answer from 2014 whose matching text was added in a 2022 edit: revision 32, CC BY-SA 4.0 (live capture 2026-10-24)"
+ },
+ {
+  "id": "C3",
+  "root": "cases/C3",
+  "include": [
+   "C3_so_with_attribution.js"
+  ],
+  "labels": {
+   "flag": false,
+   "origin": null,
+   "license": null,
+   "attribution": "present",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint",
+   "open"
+  ],
+  "note": "C1 plus a comment that links the answer: attribution present, not a flag"
+ },
+ {
+  "id": "C4",
+  "root": "cases/C4",
+  "include": [
+   "C4_attrs_filters_MIT.py"
+  ],
+  "labels": {
+   "flag": false,
+   "origin": null,
+   "license": "MIT",
+   "attribution": "present",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint"
+  ],
+  "note": "Whole MIT file with its SPDX header intact"
+ },
+ {
+  "id": "C5",
+  "root": "cases/C5",
+  "include": [
+   "C5_ansible_unfrackpath_GPL3.py"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://github.com/ansible/ansible",
+   "license": "GPL-3.0-only",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint"
+  ],
+  "note": "GPL function in a project whose LICENSE is MIT (constructed LICENSE)"
+ },
+ {
+  "id": "C5b",
+  "root": "cases/C5b",
+  "include": [
+   "C5b_git_strbuf_commented_addf_GPL2.c"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://github.com/git/git",
+   "license": "GPL-2.0-only",
+   "attribution": "absent",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint"
+  ],
+  "note": "GPL-2.0 function from git, no header"
+ },
+ {
+  "id": "C6",
+  "root": "cases/C6",
+  "include": [
+   "app.py"
+  ],
+  "extra": {
+   "app.py": "# the project's own code\nprint('hello')\n"
+  },
+  "labels": {
+   "flag": false,
+   "origin": null,
+   "license": null,
+   "attribution": null,
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "strict"
+  ],
+  "note": "Declared dependency vendored in node_modules; app.py is added because a project with only vendored files has nothing to scan (no_source_files)"
+ },
+ {
+  "id": "C7",
+  "root": "cases/C7",
+  "include": [
+   "C7_boilerplate.java",
+   "C7_boilerplate.py"
+  ],
+  "labels": {
+   "flag": false,
+   "origin": null,
+   "license": null,
+   "attribution": null,
+   "match_type": null
+  },
+  "reachable_tiers": [],
+  "note": "Boilerplate: getters and setters, imports, main"
+ },
+ {
+  "id": "C8",
+  "root": "cases/C8",
+  "include": [
+   "C8_original.py"
+  ],
+  "labels": {
+   "flag": false,
+   "origin": null,
+   "license": null,
+   "attribution": null,
+   "match_type": null
+  },
+  "reachable_tiers": [],
+  "note": "Original code written for the test"
+ },
+ {
+  "id": "C9",
+  "root": "cases/C9",
+  "include": [
+   "C9_nolicense_noamopt.py"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://github.com/jsbaan/transformer-from-scratch",
+   "license": "NONE",
+   "attribution": "other_reference",
+   "match_type": null
+  },
+  "reachable_tiers": [
+   "fingerprint"
+  ],
+  "note": "Repository without a licence file. The open tier finds two Stack Overflow answers that hold the same class (the Annotated Transformer code); the label expects the repository, so the open tier alone scores fp+fn here although those answers are real candidates"
+ },
+ {
+  "id": "C10",
+  "root": "cases/C10",
+  "include": [
+   "C10_renamed_of_C1.js"
+  ],
+  "labels": {
+   "flag": true,
+   "origin": "https://stackoverflow.com/a/58437909",
+   "license": "CC-BY-SA-4.0",
+   "attribution": "absent",
+   "match_type": "normalised"
+  },
+  "reachable_tiers": [
+   "open"
+  ],
+  "note": "C1 with renamed identifiers; found only by the open tier (the two-word query without the renamed names)"
+ }
+]

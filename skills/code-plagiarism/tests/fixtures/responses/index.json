@@ -1,14 +1,14 @@
 {
-  "GET https://api.stackexchange.com/2.3/answers/1989915;5061842;5408219;21463854;21688430;24063660;26853961;27204280;27350022;36346517;40801433;42698921;44402712;44556106;45712555;47597204;47665332;53954986;55147077;55543871;55734349;57626617;57777642;58437909;63546158;64128368;64178448;64268002;64657391;65448061;66106848;66212699;66376073;66510044;66609787;66696341;66878732;67002289;67248363;67802513;68525174;70418640;70589648;70690355;70797302;70936083;71027462;71092843;71130211;71144902;71283819;71284757;71916440;72022541;72063750;72111831;72428896;72465979;72593480;72700848;72813297;72822274;73422379;73629646;73888104;73920787;74328555;74380567;74409072;74429489;74487535;74515774;74789406;74877514;74911798;74990817;74993665;75119702;75223689;75297090;75420946;75533320;75761923;75906894;75950582;76153626;76238914;76312728;76349423;76412932;76584763;76919714;76925753;77405103;77639040;77773189;77822244;77880574;77973830;78026270?filter=!aCuEwSk)swOnzkY756NSBElDuFY7vyPJwO83-S.Y8i&site=stackoverflow&pagesize=100": {
-    "file": "a89ae5865321b1f5.body",
+  "GET https://api.stackexchange.com/2.3/answers/1989915;2704866;5061842;5408219;20833285;21463854;21688430;23358757;24063660;26853961;27204280;27350022;27799058;30638022;36346517;40801433;42698921;44402712;44556106;44576113;45712555;47597204;47665332;53954986;55147077;55543871;55734349;57626617;57777642;58437909;59010321;59010587;63546158;64128368;64178448;64268002;64657391;65448061;66106848;66212699;66376073;66510044;66609787;66696341;66878732;67002289;67248363;67802513;68525174;70418640;70589648;70690355;70797302;70936083;71027462;71092843;71130211;71144902;71283819;71284757;71916440;72022541;72063750;72111831;72428896;72465979;72593480;72700848;72813297;72822274;73422379;73519717;73629646;73888104;73920787;74328555;74380567;74409072;74429489;74487535;74515774;74789406;74877514;74911798;74990817;74993665;75119702;75223689;75297090;75420946;75533320;75570512;75761923;75906894;75950582;76153626;76238914;76312728;76349423;76412932?filter=!aCuEwSk)swOnzkY756NSBElDuFY7vyPJwO83-S.Y8i&site=stackoverflow&pagesize=100": {
+    "file": "f1424d12152961ec.body",
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63feb1f9fa43d-ZRH",
+      "CF-Ray": "a4f65796ed3db090-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:03 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:12 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -18,22 +18,22 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "1a12b710-be5f-4b27-9b94-3bcc7b236dbc",
-      "x-request-guid": "54d82e7c-f0d5-4ac6-a5e9-2efd2b172416",
-      "x-worker-origin-response-time": "259000000"
+      "x-providence-cookie": "97a02dad-bd66-438a-a039-8d0305aa15ab",
+      "x-request-guid": "e79735c6-06cf-4b7c-b6c0-08a7b246daaf",
+      "x-worker-origin-response-time": "299000000"
     },
     "status": 200
   },
-  "GET https://api.stackexchange.com/2.3/answers/78032001;78161108;78381785;78420856;78451295;78451963;78456106;78540407;78761532;78907866;78917586;79704626;79744329;79780207;79793845;79795760;79826527;79841082;79843201;79862799;79869839;79874962;79877316;79889011;79894523;79894958;79896508;79897467;79899950;79899993;79921564;79922794;79924681;79925091;79932100;79933146;79937478;79937497;79942197;79970228;79983817;79983928;79990880?filter=!aCuEwSk)swOnzkY756NSBElDuFY7vyPJwO83-S.Y8i&site=stackoverflow&pagesize=100": {
-    "file": "09531c7046339d3b.body",
+  "GET https://api.stackexchange.com/2.3/answers/76584763;76771965;76919714;76925753;76937275;77177223;77405103;77639040;77688550;77773189;77822244;77880574;77973830;78026270;78032001;78161108;78381785;78420856;78451295;78451963;78456106;78540407;78761532;78907866;78917586;79704626;79744329;79752771;79780207;79793845;79795760;79826527;79841082;79843201;79862799;79869839;79874962;79877316;79889011;79889399;79893304;79894523;79894958;79896508;79897467;79899950;79899993;79921564;79922794;79924681;79925091;79932100;79933146;79937478;79937497;79942197;79942509;79945579;79970228;79983817;79983928;79984366;79985484;79990880;80002686?filter=!aCuEwSk)swOnzkY756NSBElDuFY7vyPJwO83-S.Y8i&site=stackoverflow&pagesize=100": {
+    "file": "637b89503e283607.body",
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63ff0281d70cb-ZRH",
+      "CF-Ray": "a4f65799ff238dde-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:03 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:13 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -43,9 +43,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "86f7e351-b0c0-419a-a85e-e4906d6db35e",
-      "x-request-guid": "451a4029-c2b7-412c-b6ef-29da7b31e4d8",
-      "x-worker-origin-response-time": "195000000"
+      "x-providence-cookie": "a68a47ac-174e-4035-90ba-ae3cb25277e1",
+      "x-request-guid": "ba7686f1-0c9a-4010-a6bd-fdf521031f79",
+      "x-worker-origin-response-time": "504000000"
     },
     "status": 200
   },
@@ -54,11 +54,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63ff35f6628be-ZRH",
+      "CF-Ray": "a4f657a1997724bc-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:04 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:14 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -68,9 +68,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "9ce02f2c-77f6-4d11-8436-4d014034b710",
-      "x-request-guid": "1bc7ee1a-6d1f-43c7-8220-75c19b8140a6",
-      "x-worker-origin-response-time": "257000000"
+      "x-providence-cookie": "4f4e7896-d329-480a-a981-ed8a3e6f0fab",
+      "x-request-guid": "644e06c7-a58c-4571-88fa-372e1c08e358",
+      "x-worker-origin-response-time": "557000000"
     },
     "status": 200
   },
@@ -79,11 +79,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fd23f1f1ece-ZRH",
+      "CF-Ray": "a4f6576b8a56bc4d-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:59 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:05 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -93,9 +93,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "b20d659b-2bd4-4d74-a2a6-27edf27ebdd7",
-      "x-request-guid": "7559d53d-303f-491b-9d6b-d9805225d410",
-      "x-worker-origin-response-time": "149000000"
+      "x-providence-cookie": "d679015d-5331-47d4-93a7-126982ee6824",
+      "x-request-guid": "b379b68e-9bf6-4af4-a928-4a3228309a97",
+      "x-worker-origin-response-time": "143000000"
     },
     "status": 200
   },
@@ -104,11 +104,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fc5e9f1c126-ZRH",
+      "CF-Ray": "a4f6575e4c3abe6d-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:57 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:03 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -118,9 +118,134 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "597332a6-3037-4a19-b873-2882ee61999c",
-      "x-request-guid": "20c741c8-024a-4f32-a74b-17b5d1d70a83",
-      "x-worker-origin-response-time": "167000000"
+      "x-providence-cookie": "6fea7ea4-2a61-4eb0-9c9f-801279e94d03",
+      "x-request-guid": "78a067f6-b085-4fb7-80d2-22fa96302895",
+      "x-worker-origin-response-time": "172000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=_split_what&site=stackoverflow&pagesize=30&page=1": {
+    "file": "993be7d86c82e709.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f657733bcb6143-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:06 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "5ca609cc-477f-4c27-9175-ae55d9f24968",
+      "x-request-guid": "21f40a64-35d1-41b2-a58d-02b768e83de1",
+      "x-worker-origin-response-time": "140000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=_split_what+frozenset&site=stackoverflow&pagesize=30&page=1": {
+    "file": "4487e096484a610e.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f65774fd01142e-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:07 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "ff399f16-978b-4f2e-b327-02f9b21faa50",
+      "x-request-guid": "1e62a21e-121a-4945-934f-017c00bd2458",
+      "x-worker-origin-response-time": "144000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=attrs.Attribute&site=stackoverflow&pagesize=30&page=1": {
+    "file": "64a4b28f230e0d89.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f65778df5003a9-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:07 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "e60364e1-3559-44c7-81f3-f18e3fa9580a",
+      "x-request-guid": "7cd84bcb-8f30-4870-bfc9-4c3fa78423c3",
+      "x-worker-origin-response-time": "153000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=attrs.Attribute+attrs.astuple&site=stackoverflow&pagesize=30&page=1": {
+    "file": "dc7f91bf33603e18.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f6577acfce3dba-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:08 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "6f56d387-a7b5-49a3-8584-017efb3f9564",
+      "x-request-guid": "48f8292a-7c39-47bb-aed7-bfcfce41cba8",
+      "x-worker-origin-response-time": "140000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=attrs.astuple&site=stackoverflow&pagesize=30&page=1": {
+    "file": "f1660c3b2abbfb75.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f6577c9ed3df5e-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:08 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "e0343ae3-7855-4bca-8056-ddd5cc2cf57b",
+      "x-request-guid": "6a967fd8-f7f2-41fd-b843-1575aedb786d",
+      "x-worker-origin-response-time": "135000000"
     },
     "status": 200
   },
@@ -129,11 +254,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe03f4523bc-ZRH",
+      "CF-Ray": "a4f6578b6ebcf79f-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:01 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:10 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -143,9 +268,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "fd1cc56c-3e26-4b4f-981a-4285e26e5955",
-      "x-request-guid": "005d2f73-d1ce-4449-8f1e-083a4b33317a",
-      "x-worker-origin-response-time": "148000000"
+      "x-providence-cookie": "477033a2-8638-4bce-bd5b-6d70257025bf",
+      "x-request-guid": "48ce9f30-cf50-49e1-9d92-d899a31ee54a",
+      "x-worker-origin-response-time": "146000000"
     },
     "status": 200
   },
@@ -154,11 +279,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe1fe8ec126-ZRH",
+      "CF-Ray": "a4f6578d2f0f6143-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:01 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:11 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -168,9 +293,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "b6bbad6f-454b-4ea1-8c5a-9fe79a24723a",
-      "x-request-guid": "1aa2ec44-f5f0-41b8-a815-e1d4ff443b21",
-      "x-worker-origin-response-time": "138000000"
+      "x-providence-cookie": "86d0af32-0cf6-4787-93df-e0fcec751e98",
+      "x-request-guid": "ab0d9b0a-945f-4abd-a08c-629cf47ee462",
+      "x-worker-origin-response-time": "144000000"
     },
     "status": 200
   },
@@ -179,11 +304,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fce895b9a3d-ZRH",
+      "CF-Ray": "a4f65767bc22be8b-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:58 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:05 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -193,9 +318,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "abf19899-6189-4f0c-a6ab-084b8c7bde1a",
-      "x-request-guid": "a4b23078-5fb8-4c90-8a70-815a206888cb",
-      "x-worker-origin-response-time": "151000000"
+      "x-providence-cookie": "ceb5cb34-e57e-4e9a-afad-d9b5f73f782c",
+      "x-request-guid": "66cd4c31-5057-46b7-9f1c-97481cd54730",
+      "x-worker-origin-response-time": "160000000"
     },
     "status": 200
   },
@@ -204,11 +329,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fd06f755aea-ZRH",
+      "CF-Ray": "a4f65769ab227c01-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:58 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:05 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -218,9 +343,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "96294798-e000-42cc-bd31-8c0ba383c99c",
-      "x-request-guid": "3830101f-4b02-4fc5-a85f-dc3b7af89abc",
-      "x-worker-origin-response-time": "147000000"
+      "x-providence-cookie": "89359ae8-e2b1-4d56-adce-a3e1f474cf3b",
+      "x-request-guid": "fc24cf08-0b5d-4179-bde0-d8dd559c772b",
+      "x-worker-origin-response-time": "150000000"
     },
     "status": 200
   },
@@ -229,11 +354,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fc8c8cbbc4a-ZRH",
+      "CF-Ray": "a4f65760493d3dba-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:57 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:03 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -243,9 +368,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "76e35149-9b57-4615-b904-c2b4209c9b87",
-      "x-request-guid": "e63c21f3-de12-4389-9acb-141b4ca7e197",
-      "x-worker-origin-response-time": "149000000"
+      "x-providence-cookie": "e207788f-5083-4f38-a71e-94b1b8e8f044",
+      "x-request-guid": "2fb385da-ef14-44a6-97a4-cc4e36b3e971",
+      "x-worker-origin-response-time": "146000000"
     },
     "status": 200
   },
@@ -254,11 +379,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fcad99afbd6-ZRH",
+      "CF-Ray": "a4f657622c9117c5-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:57 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:04 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -268,8 +393,8 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "855e3c6b-af0e-47f5-acd9-530ea8841363",
-      "x-request-guid": "5e7b4b12-845b-497c-bb98-d9652602cd88",
+      "x-providence-cookie": "3c732198-6f0f-41a2-bcad-889f0a62c60a",
+      "x-request-guid": "bf810f7c-1b52-4f9d-bf41-a02f4cc649dc",
       "x-worker-origin-response-time": "147000000"
     },
     "status": 200
@@ -279,11 +404,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe3be4c03a3-ZRH",
+      "CF-Ray": "a4f6578f0a8cb388-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:01 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:11 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -293,9 +418,10 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "5cc54aa9-491f-463a-a757-2ee056513cc7",
-      "x-request-guid": "5f7a9406-be31-461f-84d8-00fb9f5a215c",
-      "x-worker-origin-response-time": "162000000"
+      "x-miniprofiler-ids": "[\"4ce66738-3fc6-44b9-aea9-e5d56717d1d0\"]",
+      "x-providence-cookie": "c87e99fe-4164-4bbc-9cb7-4658fce96ae4",
+      "x-request-guid": "4ce66738-3fc6-44b9-aea9-e5d56717d1d0",
+      "x-worker-origin-response-time": "166000000"
     },
     "status": 200
   },
@@ -304,11 +430,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fd7c99607f4-ZRH",
+      "CF-Ray": "a4f6577e4ed0b977-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:59 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:08 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -318,9 +444,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "d5fbbe6d-3a9e-40cd-bb06-bb618f00f61e",
-      "x-request-guid": "a7fb706b-6a89-4f08-943a-d7c58cc94cef",
-      "x-worker-origin-response-time": "163000000"
+      "x-providence-cookie": "6236cc56-f477-45bb-9db9-c6f7dbcba92f",
+      "x-request-guid": "672aa03c-a336-4b27-a554-4b7090f736bd",
+      "x-worker-origin-response-time": "178000000"
     },
     "status": 200
   },
@@ -329,11 +455,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fda9a26be75-ZRH",
+      "CF-Ray": "a4f65780498b03b5-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:00 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:09 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -343,9 +469,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "576f3cc2-c52c-4f0d-909d-ad55987177ed",
-      "x-request-guid": "64be0d36-2f98-444b-975f-7e85069d8b35",
-      "x-worker-origin-response-time": "165000000"
+      "x-providence-cookie": "e013df56-0e04-4d32-8cbb-51d784937d8c",
+      "x-request-guid": "a95fd94e-78ef-4324-8546-6045e8cff4b5",
+      "x-worker-origin-response-time": "166000000"
     },
     "status": 200
   },
@@ -354,11 +480,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fdc88dc218b-ZRH",
+      "CF-Ray": "a4f657823bd903a9-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:00 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:09 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -368,9 +494,34 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "e18e8015-8ddf-4958-845a-f319a8fef727",
-      "x-request-guid": "f6883385-5685-4e91-a1a6-39b4ce579c88",
-      "x-worker-origin-response-time": "139000000"
+      "x-providence-cookie": "85a126e2-909b-49de-9dbc-cb2fbf7ed82a",
+      "x-request-guid": "0b6426e7-646c-4e8b-84d9-4290219d65d1",
+      "x-worker-origin-response-time": "140000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=frozenset&site=stackoverflow&pagesize=30&page=1": {
+    "file": "a71212a32b06384e.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f65776e87b70cb-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:07 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "305e755f-dff9-42db-bf79-a72bc78a278a",
+      "x-request-guid": "b69392fa-fc8b-48b6-911e-77cae6d30f19",
+      "x-worker-origin-response-time": "164000000"
     },
     "status": 200
   },
@@ -379,11 +530,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fbfbe3ccd00-ZRH",
+      "CF-Ray": "a4f657588f72719b-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:56 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:02 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -393,9 +544,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "60efa023-ee20-404d-b4ed-4ecd47146b42",
-      "x-request-guid": "5afab462-7b39-44bb-a244-33110b76af06",
-      "x-worker-origin-response-time": "160000000"
+      "x-providence-cookie": "60bb6a46-5ece-486a-8418-eed1806fde16",
+      "x-request-guid": "ee49a904-0221-4291-bde3-19765bac6815",
+      "x-worker-origin-response-time": "169000000"
     },
     "status": 200
   },
@@ -404,11 +555,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fc1df985659-ZRH",
+      "CF-Ray": "a4f6575a8f9f58a8-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:56 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:02 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -418,8 +569,8 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "10b0dab2-b345-427c-9f61-b43718fcd7d1",
-      "x-request-guid": "c9351509-2280-4322-98c0-980d21c61cf3",
+      "x-providence-cookie": "8752e87c-a993-4746-ade3-5697eae1456b",
+      "x-request-guid": "206acc8e-8b1c-44ce-8e59-c0ea63d6fb3d",
       "x-worker-origin-response-time": "157000000"
     },
     "status": 200
@@ -429,11 +580,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fc3b9e0608c-ZRH",
+      "CF-Ray": "a4f6575c6bf70229-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:56 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:03 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -443,9 +594,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "5d43634e-d39e-4730-a63a-503eeb53adf8",
-      "x-request-guid": "7f8bcb9b-dd58-491e-8688-0fd850997b54",
-      "x-worker-origin-response-time": "155000000"
+      "x-providence-cookie": "1d91d7d2-de83-446b-a363-dd36f2c76a68",
+      "x-request-guid": "843fb426-9362-41bf-9829-0ed98ce74d0c",
+      "x-worker-origin-response-time": "174000000"
     },
     "status": 200
   },
@@ -454,11 +605,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe5b8ad9cec-ZRH",
+      "CF-Ray": "a4f657910ca9a756-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:02 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:11 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -468,9 +619,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "0d34f7a4-d209-4f89-974e-4ab74d91dbb8",
-      "x-request-guid": "d0bfc4d8-6d30-4ee7-bd49-22a21de5909d",
-      "x-worker-origin-response-time": "147000000"
+      "x-providence-cookie": "4c13e19d-8a68-45f7-b58b-5e1d773506d6",
+      "x-request-guid": "07896b97-005d-49f1-acca-49e517feec28",
+      "x-worker-origin-response-time": "157000000"
     },
     "status": 200
   },
@@ -479,11 +630,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe79f0bdf5e-ZRH",
+      "CF-Ray": "a4f65792eae72ff1-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:02 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:11 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -493,9 +644,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "9bca30cb-1eae-40db-a02b-db590aa62ce0",
-      "x-request-guid": "63e819f2-14a9-46be-81b5-af78f0013ef7",
-      "x-worker-origin-response-time": "138000000"
+      "x-providence-cookie": "e4442b68-89fe-434a-9b24-867ac56204cf",
+      "x-request-guid": "b5cbd747-969e-4e50-952e-e5e28d61fd8f",
+      "x-worker-origin-response-time": "148000000"
     },
     "status": 200
   },
@@ -504,11 +655,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fccac7c03a9-ZRH",
+      "CF-Ray": "a4f657641f4e8628-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:58 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:04 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -518,9 +669,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "e70063e6-4b19-42e3-895b-dc22ec6a3eb1",
-      "x-request-guid": "7c5227a2-e23e-4e8d-894b-c01f1ac5ff75",
-      "x-worker-origin-response-time": "153000000"
+      "x-providence-cookie": "32864bf7-65a9-47d5-ac2e-f697acd523d6",
+      "x-request-guid": "d97ffe21-b17b-4b7f-b022-a7bbe8da6f14",
+      "x-worker-origin-response-time": "414000000"
     },
     "status": 200
   },
@@ -529,11 +680,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fe94f5e70cb-ZRH",
+      "CF-Ray": "a4f65794ce0c6ddf-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:02 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:12 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -543,9 +694,84 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "f02ba358-0942-4f50-9ee0-f26a0fb55682",
-      "x-request-guid": "72bcb802-556b-4fe4-bf60-5d2ba62ee93d",
-      "x-worker-origin-response-time": "162000000"
+      "x-providence-cookie": "3d8dc784-3331-4ab5-81a4-32caa5a3a7a7",
+      "x-request-guid": "c150cd62-5e46-405c-988d-b99c130f2c84",
+      "x-worker-origin-response-time": "164000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=strbuf_add_commented_lines&site=stackoverflow&pagesize=30&page=1": {
+    "file": "7d490d5ffe673ae2.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f65785da800d25-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:09 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "7a206200-6ce1-476d-88f5-b562aa28407c",
+      "x-request-guid": "c947500f-a1e5-43c5-b503-e10eb030f74c",
+      "x-worker-origin-response-time": "138000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=strbuf_add_commented_lines+strbuf_commented_addf&site=stackoverflow&pagesize=30&page=1": {
+    "file": "73792ebe7cef188f.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f65787bb46ffaf-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:10 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "92df23e9-d7b7-4a4a-8c1e-2ba01a938611",
+      "x-request-guid": "41ce0be5-ac7e-4e4c-9fac-56e52fd8d210",
+      "x-worker-origin-response-time": "164000000"
+    },
+    "status": 200
+  },
+  "GET https://api.stackexchange.com/2.3/search/excerpts?q=strbuf_commented_addf&site=stackoverflow&pagesize=30&page=1": {
+    "file": "ec9af15d41232801.body",
+    "headers": {
+      "Access-Control-Allow-Origin": "*",
+      "CF-Cache-Status": "DYNAMIC",
+      "CF-Ray": "a4f657899b0ebc0e-ZRH",
+      "Cache-Control": "private",
+      "Connection": "close",
+      "Content-Type": "application/json; charset=utf-8",
+      "Date": "Sat, 24 Oct 2026 04:47:10 GMT",
+      "Server": "cloudflare",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Transfer-Encoding": "chunked",
+      "Vary": "accept-encoding",
+      "access-control-allow-credentials": "false",
+      "access-control-allow-methods": "GET, POST",
+      "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
+      "x-clacks-overhead": "GNU Terry Pratchett",
+      "x-content-type-options": "nosniff",
+      "x-providence-cookie": "a6f99d12-a1ec-4879-b366-d23b36f4fc73",
+      "x-request-guid": "0fd15492-bcc7-4da2-89a8-2f01cb0009a1",
+      "x-worker-origin-response-time": "147000000"
     },
     "status": 200
   },
@@ -554,11 +780,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fd3fe5f03a9-ZRH",
+      "CF-Ray": "a4f6576d6b1bbe5f-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:59 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:06 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -568,9 +794,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "8a2a36b5-cac5-47ae-8520-5bdbd460ec46",
-      "x-request-guid": "38fbaf44-49a5-43f1-9737-6b9881e42376",
-      "x-worker-origin-response-time": "164000000"
+      "x-providence-cookie": "3825c810-0cf8-45f2-a64e-98576e47d278",
+      "x-request-guid": "51412ef3-814e-4fba-bbfa-4a1a461374c7",
+      "x-worker-origin-response-time": "165000000"
     },
     "status": 200
   },
@@ -579,11 +805,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fd5f8248b2c-ZRH",
+      "CF-Ray": "a4f65771285bbe86-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:30:59 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:06 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -593,9 +819,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "7f52d2f4-9ea3-46df-a083-7ef7341b83e1",
-      "x-request-guid": "dc9ef269-35d7-49d3-b8f8-118e78aa82d1",
-      "x-worker-origin-response-time": "154000000"
+      "x-providence-cookie": "3da7cc60-4490-4d30-9322-be3edebff731",
+      "x-request-guid": "4b6f795d-90f7-4d01-b4fc-b4fb391b89c0",
+      "x-worker-origin-response-time": "172000000"
     },
     "status": 200
   },
@@ -604,11 +830,11 @@
     "headers": {
       "Access-Control-Allow-Origin": "*",
       "CF-Cache-Status": "DYNAMIC",
-      "CF-Ray": "a4f63fde4d6008a4-ZRH",
+      "CF-Ray": "a4f657840817cb74-ZRH",
       "Cache-Control": "private",
       "Connection": "close",
       "Content-Type": "application/json; charset=utf-8",
-      "Date": "Sat, 24 Oct 2026 04:31:00 GMT",
+      "Date": "Sat, 24 Oct 2026 04:47:09 GMT",
       "Server": "cloudflare",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Transfer-Encoding": "chunked",
@@ -618,9 +844,9 @@
       "content-security-policy": "upgrade-insecure-requests; frame-ancestors 'self' https://stackexchange.com",
       "x-clacks-overhead": "GNU Terry Pratchett",
       "x-content-type-options": "nosniff",
-      "x-providence-cookie": "a41524a7-601f-401c-a667-9c0bfe203bcf",
-      "x-request-guid": "f57a0fd0-107c-493d-a6d0-0f149d643214",
-      "x-worker-origin-response-time": "145000000"
+      "x-providence-cookie": "5300744b-70b2-49b1-9167-8bed248fe702",
+      "x-request-guid": "3e9cdc23-486f-4278-a13e-0021c7c2b522",
+      "x-worker-origin-response-time": "141000000"
     },
     "status": 200
   },

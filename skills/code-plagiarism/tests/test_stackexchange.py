@@ -647,13 +647,15 @@ def test_cli_missing_include_is_an_error(tmp_path, capsys):
 # ---- recorded live responses (2026-10-24, public fixture identifiers only) -------------------------
 
 def recorded_run(tmp_path):
+    """Replays the live capture: the plan the evaluation harness builds over all fixture cases (38 searches)."""
+    import evaluate as ev
     from replay import ReplayOpener
-    root = tmp_path / "cases"
-    shutil.copytree(CASES, root)
-    includes = ["C1", "C1p", "C1b", "C2", "C5", "C8", "C9", "C10"]
-    plan = se.make_plan(root, includes)
+    cases = ev.load_cases(FIXTURES / "cases.json")
+    work = ev._Work(cases, FIXTURES, tmp_path / "work")
+    includes = [i for c in cases for i in ev._case_includes(c, c["id"] + "/")]
+    plan = se.make_plan(work.combined, includes, max_requests=ev.OPEN_MAX_REQUESTS)
     opener = ReplayOpener(RESPONSES)
-    res, _ = run_plan(tmp_path, plan, root, opener)
+    res, _ = run_plan(tmp_path, plan, work.combined, opener)
     return plan, res, opener
 
 
