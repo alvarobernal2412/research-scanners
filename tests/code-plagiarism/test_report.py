@@ -359,7 +359,7 @@ def test_file_header_beats_repo_license_for_conflict(tmp_path):
     rep = build(root, [hand_results(tmp_path, root, [RawMatch("src/g.py", 2, 30, "near", gpl)])])
     (f,) = rep["findings"]
     assert "license_conflict" not in f["flag_reasons"]          # the file's own header says GPL, matching the candidate
-    assert f["attribution"]["status"] == "present"
+    assert f["attribution"]["status"] == "other_reference"      # ...but its own header is not attribution
 
 
 def test_other_reference_when_file_cites_something_else(tmp_path):
@@ -472,3 +472,51 @@ def test_which_urls_count_as_references(tmp_path, line, counts):
     root = project(tmp_path, {"src/a.py": line + "\n" + "x = 1\n" * 30})
     refs = build(root)["references_in_comments"]
     assert bool(refs) == counts, line
+
+
+def _snippet_file(header):
+    return header + "".join(f"x{i} = {i}\n" for i in range(1, 30))
+
+
+def test_own_spdx_tag_is_not_attribution_of_a_snippet_from_someone_else(tmp_path):
+    root = project(tmp_path, {"src/g.py": _snippet_file("# SPDX-License-Identifier: MIT\n")})
+    rep = build(root, [hand_results(tmp_path, root, [RawMatch("src/g.py", 2, 30, "near", cand())])])
+    f = rep["findings"][0]
+    assert f["attribution"]["status"] != "present"
+    assert "unattributed" in f["flag_reasons"]
+
+
+def test_header_licence_plus_copyright_naming_the_author_is_attribution(tmp_path):
+    root = project(tmp_path, {"src/g.py": _snippet_file(
+        "# SPDX-License-Identifier: MIT\n# Copyright 2020 Jane Doe\n")})
+    c = cand(author="Jane Doe")
+    rep = build(root, [hand_results(tmp_path, root, [RawMatch("src/g.py", 3, 31, "near", c)])])
+    assert rep["findings"][0]["attribution"]["status"] == "present"
+
+
+def _blank_root(path):
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data["root"] = ""
+    Path(path).write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_results_file_with_empty_root_and_errors_is_not_a_tier_run(tmp_path):
+    root = project(tmp_path, {"src/g.py": _snippet_file("")})
+    res = hand_results(tmp_path, root, [], backend="scanoss", tier="fingerprint", name="early.json",
+                       errors=[{"code": "plan_hash_mismatch", "detail": "x"}])
+    _blank_root(res)
+    rep = build(root, [res])
+    assert "fingerprint" not in rep["tiers_run"]
+    assert any("fingerprint" in n for n in rep["coverage"]["not_checked"])
+    assert any(e["code"] == "plan_hash_mismatch" for e in rep["coverage"]["errors"]) or \
+        any(e.get("code") == "plan_hash_mismatch" for e in rep.get("errors", []))
+
+
+def test_matches_from_a_rootless_results_file_are_refused(tmp_path):
+    root = project(tmp_path, {"src/g.py": _snippet_file("")})
+    res = hand_results(tmp_path, root, [RawMatch("src/g.py", 2, 30, "near", cand())], name="early2.json",
+                       errors=[{"code": "boom", "detail": "x"}])
+    _blank_root(res)
+    with pytest.raises(report.ReportError) as ei:
+        build(root, [res])
+    assert ei.value.code == "results_root_mismatch"

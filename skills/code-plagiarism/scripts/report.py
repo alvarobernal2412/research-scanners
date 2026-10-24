@@ -145,6 +145,9 @@ def _load_results(paths: list, root_name: str) -> list:
                 raise ReportError("results_invalid", f"{label}: {key} must be a list")
         # a run that failed before it could read its plan records an empty root together with the error
         failed_early = data["root"] in ("", None) and bool(data.get("errors"))
+        if failed_early and data.get("matches"):
+            raise ReportError("results_root_mismatch", f"{label} has no root recorded but carries matches")
+        data["_failed_early"] = failed_early
         if not failed_early and data["root"] != root_name:
             raise ReportError("results_root_mismatch",
                               f"{label} was made for '{data['root']}', not '{root_name}'")
@@ -204,20 +207,36 @@ def _ref_matches(ref, cand: dict) -> bool:
     return ref.url.lower().rstrip("/") == url
 
 
-def _attribution(file: _File, candidates: list) -> dict:
+def _names_candidate(text: str, cand: dict) -> bool:
+    low = text.lower()
+    names = [cand.get("author")]
+    m = re.search(r"(?:github|gitlab|bitbucket)\.com/([^/\s]+)", cand.get("origin_url") or "", re.I)
+    if m:
+        names.append(m.group(1))
+    return any(isinstance(n, str) and len(n.strip()) >= 3 and n.strip().lower() in low for n in names)
+
+
+def _attribution(file: _File, candidates: list, whole_file: bool = False) -> dict:
     ev = []
     for ref in file.refs:
         if any(_ref_matches(ref, c) for c in candidates):
             ev.append({"line": ref.line, "text": ref.url[:200], "kind": "reference"})
     cand_bases = {_base(l["spdx"]) for c in candidates for l in c.get("licenses", []) if l.get("spdx")}
+    # a file's own licence header only credits the candidate when the whole file (header included) is the
+    # candidate's, or a copyright line names the candidate; otherwise it is just the project's own header
+    names_cand = any(e.kind == "copyright" and any(_names_candidate(e.text, c) for c in candidates)
+                     for e in file.evidence)
     for e in file.evidence:
-        if e.spdx and e.kind in ("spdx_tag", "license_text") and _base(e.spdx) in cand_bases:
+        if (e.spdx and e.kind in ("spdx_tag", "license_text") and _base(e.spdx) in cand_bases
+                and (whole_file or names_cand)):
             ev.append({"line": e.line, "text": e.text[:200], "kind": "header_license"})
     if ev:
         return {"status": "present", "evidence": ev}
     other = [{"line": r.line, "text": r.url[:200], "kind": "reference"} for r in file.refs]
     other += [{"line": e.line, "text": e.text[:200], "kind": "copyright"} for e in file.evidence
               if e.kind == "copyright"]
+    other += [{"line": e.line, "text": e.text[:200], "kind": "own_header_license"} for e in file.evidence
+              if e.spdx and e.kind in ("spdx_tag", "license_text")]
     if other:
         return {"status": "other_reference", "evidence": other[:10]}
     return {"status": "absent", "evidence": []}
@@ -304,7 +323,7 @@ def build_report(root: Path, results_paths: list, use_scancode: bool = True, sca
                         files[rel].scancode = list(ev)
 
     # ---- results
-    tiers = ["strict-local"] + [r["tier"] for r in results]
+    tiers = ["strict-local"] + [r["tier"] for r in results if not r.get("_failed_early")]
     tiers_run = [t for t in TIER_ORDER if t in tiers]
     dropped: list = []
     raw_matches: list = []
@@ -373,7 +392,7 @@ def build_report(root: Path, results_paths: list, use_scancode: bool = True, sca
         eff = effective_file_license(f.evidence, project)
         for cl in _clusters(by_file[rel]):
             cands = _merge_candidates(cl["matches"])
-            attribution = _attribution(f, cands)
+            attribution = _attribution(f, cands, whole_file=any(m.match_type == "file" for m in cl["matches"]))
             target = eff.spdx if eff else None
             reasons = []
             if attribution["status"] != "present":
