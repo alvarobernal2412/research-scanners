@@ -1,2 +1,3 @@
 -r skills/llm-tropes/requirements.txt
+-r skills/text-plagiarism/requirements.txt
 pytest
