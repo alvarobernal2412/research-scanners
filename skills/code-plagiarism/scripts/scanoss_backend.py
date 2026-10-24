@@ -741,7 +741,7 @@ def run(plan_path: Path, approved_sha256: str, runner=None) -> dict:
             r["method"] != "POST" or r["url"] != ENDPOINT or r.get("headers") for r in reqs):
         raise ScanossError("plan_invalid", "not a SCANOSS fingerprint plan")
     injected = runner is not None
-    cli = find_cli()
+    cli = find_cli(plan["root"])
     if cli is None:
         if not injected:
             raise ScanossError("scanoss_not_installed", _NOT_INSTALLED)
