@@ -17,7 +17,7 @@ Do not use for: comparing student submissions with each other, legal advice, or 
 
 ## Install
 
-Python 3.10+, standard library only. `pip install -r <skill dir>/requirements.txt` installs the test runner; nothing else is needed for the strict and open tiers. Optional:
+Python 3.10+, standard library only. Nothing needs installing for the strict and open tiers. `<skill dir>/requirements.txt` lists only the optional SCANOSS client. Optional:
 
 - `pip install "scanoss>=1.54,<1.55"` (MIT) for the fingerprint tier. The scripts look for the `scanoss-py` command.
 - ScanCode Toolkit (`pip install scancode-toolkit "pluggy==1.5.0"`, about 670 MB) for stronger local licence detection. Without it a built-in detector reads SPDX tags and common licence texts.

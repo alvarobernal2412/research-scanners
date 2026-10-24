@@ -255,12 +255,12 @@ def main(argv: list[str]) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if len(argv) != 1:
-        print(json.dumps({"error": "usage", "message": "inventory.py <root>"}))
+        print(json.dumps({"error": "usage", "detail": "inventory.py <root>"}))
         return 2
     try:
         inv = inventory(Path(argv[0]))
     except InventoryError as exc:
-        print(json.dumps({"error": exc.code, "message": str(exc)}))
+        print(json.dumps({"error": exc.code, "detail": str(exc)}))
         return 2
     by_dir: dict[str, list[str]] = {}
     for s in inv.sources:

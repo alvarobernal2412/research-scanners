@@ -156,3 +156,12 @@ def test_readme_mermaid_block_is_wellformed():
     # every network step is a dashed edge labelled NETWORK, and sits behind an approval gate
     assert src.count("NETWORK") == 3 and src.count("-.->|\"NETWORK") == 3
     assert src.count("You approve this") == 3 and "sha256" in src
+
+
+def test_install_wording_matches_requirements_and_error_keys():
+    import subprocess
+    assert "installs the test runner" not in TEXT
+    out = subprocess.run([sys.executable, "-I", str(SKILL / "scripts" / "inventory.py")],
+                         capture_output=True, text=True).stdout
+    err = json.loads(out)
+    assert "detail" in err and "message" not in err
