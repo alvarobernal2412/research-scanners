@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-SKILL = Path(__file__).resolve().parents[1]
+SKILL = Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism"
 sys.path.insert(0, str(SKILL / "scripts"))
 
 from inventory import InventoryError, inventory, read_lines, resolve_includes  # noqa: E402
@@ -150,7 +150,7 @@ def test_gitignored_file_skipped(tmp_path):
 
 
 def test_fixture_bytes_unchanged():
-    p = SKILL / "tests/fixtures/cases/C1/C1_so_2019_cc4.js"
+    p = Path(__file__).resolve().parent / "fixtures/cases/C1/C1_so_2019_cc4.js"
     assert hashlib.md5(p.read_bytes()).hexdigest() == "69b6476c4a326882988dec56b5874204"
 
 

@@ -38,7 +38,7 @@ All recorded 2026-10-20 during the backend spike (`$SPIKE` = the spike scratchpa
 
 ## Licence of these fixtures
 
-The files keep their original licences: CC BY-SA 3.0 / 4.0 for the Stack Overflow snippets (C1, C1p, C1b, C2 and the derived C3, C10), GPL-2.0 / GPL-3.0 for C5b and C5, MIT for C4 and C6. They live only under `tests/fixtures/cases/`, are used for testing only, and await the repository owner's licence decision.
+The files keep their original licences: CC BY-SA 3.0 / 4.0 for the Stack Overflow snippets (C1, C1p, C1b, C2 and the derived C3, C10), GPL-2.0 / GPL-3.0 for C5b and C5, MIT for C4 and C6. They live only under `tests/code-plagiarism/fixtures/cases/`, are used for testing only. The repository is Apache-2.0 (see the root `NOTICE`); these files are not relicensed.
 
 ## Findings from the Stack Exchange capture (2026-10-24)
 

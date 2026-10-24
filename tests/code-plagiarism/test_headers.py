@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-SKILL = Path(__file__).resolve().parents[1]
+SKILL = Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism"
 sys.path.insert(0, str(SKILL / "scripts"))
 
 import headers  # noqa: E402
@@ -12,7 +12,7 @@ from headers import (detect_header, detect_license_file, effective_file_license,
                      find_references, project_licenses, run_scancode)
 from inventory import inventory, read_lines  # noqa: E402
 
-FIX = SKILL / "tests" / "fixtures"
+FIX = Path(__file__).resolve().parent / "fixtures"
 CASES = FIX / "cases"
 
 ANSIBLE = """\

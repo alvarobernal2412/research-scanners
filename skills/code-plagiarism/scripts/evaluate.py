@@ -2,7 +2,7 @@
 
 This is NOT the user-facing approval gate. In replay mode (the default) the harness approves each plan by
 passing its own computed hash and answers every request from the recorded responses in
-`tests/fixtures/responses/`, so it never touches the network. With `--live` it only writes all plans to
+`tests/code-plagiarism/fixtures/responses/`, so it never touches the network. With `--live` it only writes all plans to
 `--plans-dir` and prints their previews plus ONE combined sha256 over the sorted plan hashes; nothing is sent.
 `--live --approve <combined sha256>` re-reads those plans, checks that the combined hash is the one you
 approved, and then runs them against the real services (the fixtures are public code). `--record DIR` stores

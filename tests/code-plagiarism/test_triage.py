@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-SKILL = Path(__file__).resolve().parents[1]
+SKILL = Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism"
 sys.path.insert(0, str(SKILL / "scripts"))
 
 from inventory import SourceFile, read_lines  # noqa: E402
@@ -17,8 +17,8 @@ from triage import (MAX_BLOCK_LINES, Block, declared_tree_reason,  # noqa: E402
                     local_match_drop_reason, merge_adjacent, scanoss_drop_reason,
                     significant_lines, split_blocks, trivial_reason)
 
-CASES = SKILL / "tests" / "fixtures" / "cases"
-RESP = SKILL / "tests" / "fixtures" / "responses"
+CASES = Path(__file__).resolve().parent / "fixtures" / "cases"
+RESP = Path(__file__).resolve().parent / "fixtures" / "responses"
 
 
 def sf(rel="a.py", lang="hash"):

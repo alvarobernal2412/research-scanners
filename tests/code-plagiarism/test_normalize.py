@@ -2,14 +2,14 @@ import sys
 import time
 from pathlib import Path
 
-SKILL = Path(__file__).resolve().parents[1]
+SKILL = Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism"
 sys.path.insert(0, str(SKILL / "scripts"))
 
 from inventory import read_lines  # noqa: E402
 from normalize import (FULL_COVERAGE, K_GRAM, MAX_GAP_TOKENS, MIN_MATCH_TOKENS,  # noqa: E402
                        Token, compare, normalise, token_line_span, tokenize)
 
-CASES = SKILL / "tests" / "fixtures" / "cases"
+CASES = Path(__file__).resolve().parent / "fixtures" / "cases"
 
 
 def c1():

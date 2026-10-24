@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, unquote_plus, urlsplit
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism" / "scripts"))
 
 import approval  # noqa: E402
 import stackexchange as se  # noqa: E402

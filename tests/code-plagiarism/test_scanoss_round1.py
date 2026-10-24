@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism" / "scripts"))
 
 import approval  # noqa: E402
 import scanoss_backend as sb  # noqa: E402
@@ -129,7 +129,7 @@ def test_untested_client_version_is_refused(tmp_path, capsys):
 
 
 def test_requirements_pin_scanoss():
-    text = (Path(__file__).parents[1] / "requirements.txt").read_text(encoding="utf-8")
+    text = (Path(__file__).resolve().parents[2] / "skills" / "code-plagiarism" / "requirements.txt").read_text(encoding="utf-8")
     assert "scanoss>=1.54,<1.55" in text
 
 
