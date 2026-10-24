@@ -1,0 +1,173 @@
+[
+ {
+  "id": "P1",
+  "doc_file": "P1.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [
+   {
+    "source_doi": "10.1007/s12599-020-00641-4",
+    "attribution": "unattributed"
+   }
+  ],
+  "public_text": true
+ },
+ {
+  "id": "T1",
+  "doc_file": "T1.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "known_limitation": true,
+  "coverage_must_mention": [
+   "10.1007/978-3-032-40795-5_31",
+   "only_supplementary_files",
+   "Paywalled"
+  ],
+  "public_text": false
+ },
+ {
+  "id": "T2",
+  "doc_file": "T2.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "known_limitation": true,
+  "coverage_must_mention": [
+   "Unpublished"
+  ],
+  "public_text": false,
+  "must_not_send": [
+   "In the preliminary stage the raw event streams are reshaped into tidy tables that suit the intended question and the chosen mining technique."
+  ]
+ },
+ {
+  "id": "T3",
+  "doc_file": "T3.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "public_text": true
+ },
+ {
+  "id": "T4",
+  "doc_file": "T4.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [
+   {
+    "source_doi": "10.1007/s12599-020-00641-4",
+    "attribution": "cited_not_quoted"
+   }
+  ],
+  "public_text": true
+ },
+ {
+  "id": "T5",
+  "doc_file": "T5.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "public_text": true
+ },
+ {
+  "id": "T6",
+  "doc_file": "T6.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "public_text": true
+ },
+ {
+  "id": "T7",
+  "doc_file": "T7.md",
+  "tiers": [
+   "strict"
+  ],
+  "expected": [],
+  "public_text": true
+ },
+ {
+  "id": "T8",
+  "doc_file": "T8_scanned.pdf",
+  "tiers": [
+   "strict"
+  ],
+  "expect_error": "no_text_extracted",
+  "public_text": true
+ },
+ {
+  "id": "O1",
+  "doc_file": "O1.md",
+  "tiers": [
+   "strict",
+   "open"
+  ],
+  "open_sections": [
+   "s1"
+  ],
+  "open_backends": [
+   "europepmc"
+  ],
+  "expected": [
+   {
+    "source_doi": "10.2196/27499",
+    "attribution": "unattributed"
+   }
+  ],
+  "public_text": true
+ },
+ {
+  "id": "C1",
+  "doc_file": "C1.md",
+  "tiers": [
+   "strict"
+  ],
+  "corpus": [
+   "corpus_related"
+  ],
+  "expected": [
+   {
+    "source_doi": "10.1007/s12599-020-00641-4",
+    "attribution": "unattributed"
+   }
+  ],
+  "public_text": false
+ },
+ {
+  "id": "C2",
+  "doc_file": "C2.md",
+  "tiers": [
+   "strict"
+  ],
+  "corpus": [
+   "corpus_unrelated"
+  ],
+  "expected": [],
+  "public_text": false
+ },
+ {
+  "id": "C3",
+  "doc_file": "C3.md",
+  "tiers": [
+   "strict"
+  ],
+  "corpus": [
+   "corpus_own"
+  ],
+  "expected": [
+   {
+    "source_doi": "10.9999/own-earlier",
+    "attribution": "unattributed"
+   }
+  ],
+  "public_text": false
+ }
+]
