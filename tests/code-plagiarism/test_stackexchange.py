@@ -716,3 +716,9 @@ def test_revisions_has_more_falls_back_to_current_licence_at_low_confidence(tmp_
     assert all(m["candidate"]["licenses"][0]["evidence"] == "so_answer_current"
                and m["candidate"]["licenses"][0]["confidence"] == "low"
                and "incomplete" in m["candidate"]["note"] for m in res["matches"])
+
+
+def test_disclosure_does_not_overpromise_internal_name_filtering():
+    text = " ".join(se.DISCLOSURE).lower()
+    assert "internal host name" not in text
+    assert "looks internal" in text and "not a guarantee" in text

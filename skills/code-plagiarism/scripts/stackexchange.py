@@ -69,8 +69,9 @@ DISCLOSURE = [
     "Sent: for each code block you chose, 1 to 3 identifiers or words taken from your code (the rarest ones) "
     "as the q= parameter of a search request to api.stackexchange.com, a public service. Anyone who can see "
     "these requests can read those words: strike any request whose words look internal or private.",
-    "Never used as query words: anything that looks like a secret, a key, an e-mail address, an IP address, an "
-    "internal host name or a path. Not sent at all: file contents, file names or paths, comments, the project "
+    "Filtered out as query words (best effort, not a guarantee): words that look like a secret, a key, an e-mail "
+    "address, an IP address, a host name that looks internal, or a path. A name that is private to you but looks "
+    "ordinary is NOT recognised, so check the words in each request. Not sent at all: file contents, file names or paths, comments, the project "
     "name.",
     "Follow-up requests carry only public post ids that the search returned (answers, then revisions of the "
     "answers that matched). They carry nothing from your code.",
