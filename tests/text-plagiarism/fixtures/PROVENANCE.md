@@ -22,6 +22,11 @@ excerpt of work A (the control sentence and the passage). `cases/corpus_unrelate
 `cases/corpus_own/` invented text plus the work A passage for the self-overlap case. `T8_scanned.pdf` is a PDF
 page with no text. The real T2 sentence appears nowhere; `cases/T2.md` uses the invented stand-in.
 
+## Deferred fixtures
+
+Cases T1b, T1c-OA and T1d have no recorded responses and none were fabricated. They need live recording of the
+real services with the user's approval; until then they are not covered by replay tests.
+
 ## Notes on what is real and what is not
 
 - `responses/pdf-A.json`: the Springer PDF of work A. Springer now answers plain HTTP clients with a bot-challenge
