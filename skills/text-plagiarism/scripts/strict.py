@@ -20,13 +20,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import acquire  # noqa: E402
 import refs as refs_mod  # noqa: E402
-from approval import ApprovalError, Gate, build_plan, load_approved_plan, preview, write_plan  # noqa: E402
+from approval import (ApprovalError, Gate, body_windows, build_plan, content_violation,  # noqa: E402
+                      load_approved_plan, preview, write_plan)
 from common import configure_stdout, emit, fail  # noqa: E402
 from findings import load_state  # noqa: E402
 from net import Cache, RequestLog, cache_root, send  # noqa: E402
 from prepare import load_doc  # noqa: E402
+from sections import excluded_lines  # noqa: E402
 
 ROUNDS = ("resolve", "locate", "zenodo", "download")
+
+
+def workdir_body_windows(workdir: Path) -> set:
+    """5-word windows of every line that is not in an excluded section (references, funding, ...)."""
+    doc, sections, _ = load_doc(workdir)
+    excluded = excluded_lines(doc, sections)
+    return body_windows(l.text for l in doc.lines if l.no not in excluded)
 
 
 def _save_state(workdir: Path, state: dict) -> None:
@@ -117,17 +126,32 @@ def cmd_plan(workdir: Path) -> int:
     entries = _entries(state, workdir)
     infos = build_sources(entries, _load_infos(state), _corpus_items(workdir))
     acquire.settle(infos)
+    windows = workdir_body_windows(workdir)
     for round_name in ROUNDS:
         reqs = _requests_for(round_name, entries, infos)
+        refused = []
+        for req in list(reqs):          # fail closed: nothing that repeats the body text leaves the machine
+            hit = content_violation(req, windows)
+            if hit is not None:
+                reqs.remove(req)
+                refused.append({"subject": req.subject, "reason": "shares a 5-word window with the document body"})
+                if req.subject.startswith("ref:"):
+                    entries[int(req.subject[4:])].resolution = "not_sent_body_overlap"
+        if refused:
+            state["references"] = [asdict(e) for e in entries]
         if not reqs:
+            if refused:
+                _save_state(workdir, state)
             continue
         state["sources"] = [asdict(i) for i in infos]       # plan_locate may record Zenodo ids
         _save_state(workdir, state)
-        plan = build_plan("strict", round_name, doc.sha256, reqs)
+        plan = build_plan("strict", round_name, doc.sha256, reqs, body_windows=windows)
         n = len(list((workdir / "plans").glob("strict-*.json"))) + 1 if (workdir / "plans").is_dir() else 1
         path = workdir / "plans" / f"strict-{n:02d}-{round_name}.json"
         sha = write_plan(plan, path)
         pv = preview(plan)
+        if refused:
+            pv["refused"] = refused
         local = _local_only(workdir)
         if local["count"]:
             pv["local_only"] = local          # compared on this machine only: nothing about them is in the plan
@@ -150,6 +174,9 @@ def cmd_run(workdir: Path, plan_path: Path, sha256: str, opener=None) -> int:
     if plan["tier"] != "strict":
         return fail("plan_invalid", "not a strict-tier plan")
     gate = Gate(plan)
+    windows = workdir_body_windows(workdir)
+    if any(content_violation(r, windows) is not None for r in gate.requests()):
+        return fail("plan_leaks_body_text", "a request repeats the document's body text; nothing was sent")
     state = load_state(workdir)
     entries = _entries(state, workdir)
     infos = build_sources(entries, _load_infos(state), _corpus_items(workdir))

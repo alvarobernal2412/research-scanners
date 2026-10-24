@@ -28,7 +28,7 @@ CROSSREF_URL = "https://api.crossref.org/works"
 MAX_REF_QUERY_CHARS = 400
 
 RESOLUTIONS = ("doi_in_text", "arxiv_in_text", "crossref_accepted", "crossref_ambiguous", "crossref_low_score",
-               "not_sent_unpublished", "backend_error", "not_attempted")
+               "not_sent_unpublished", "not_sent_body_overlap", "backend_error", "not_attempted")
 
 
 @dataclass

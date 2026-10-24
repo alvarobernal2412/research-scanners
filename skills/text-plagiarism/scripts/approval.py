@@ -19,6 +19,8 @@ import json
 import os
 import re
 import sys
+import unicodedata
+import urllib.parse
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -33,6 +35,8 @@ SECRET_ENVS = frozenset({"OPENALEX_API_KEY", "CORE_API_KEY", "BRAVE_API_KEY"})
 IDENTITY_NAMES = SECRET_ENVS | {"TEXT_PLAGIARISM_MAILTO"}
 TIERS = ("strict", "open")
 PLACEHOLDER = re.compile(r"\{([A-Z][A-Z0-9_]*)\}")
+WINDOW_WORDS = 5
+_WORDS = re.compile(r"[^\W_]+")
 
 
 @dataclass
@@ -74,7 +78,43 @@ def _secret_values() -> list[str]:
     return [v for v in (os.environ.get(n) for n in sorted(SECRET_ENVS)) if v and len(v) >= 4]
 
 
-def build_plan(tier: str, round_name: str, document_sha256: str, requests: list[PlannedRequest]) -> dict:
+def _words(text: str) -> list[str]:
+    return _WORDS.findall(unicodedata.normalize("NFKC", text).casefold())
+
+
+def body_windows(texts, n: int = WINDOW_WORDS) -> set[tuple[str, ...]]:
+    """Every run of n consecutive words in the given texts (the user's own, non-reference text)."""
+    out: set[tuple[str, ...]] = set()
+    for text in texts:
+        w = _words(text)
+        for i in range(len(w) - n + 1):
+            out.add(tuple(w[i:i + n]))
+    return out
+
+
+def _payload(req: PlannedRequest) -> str:
+    parts = [req.url, req.body or "", *req.headers.values(), req.text_sent or ""]
+    out = []
+    for part in parts:
+        for _ in range(2):          # double-encoded payloads
+            part = urllib.parse.unquote_plus(part)
+        out.append(part)
+    return " ".join(out)
+
+
+def content_violation(req: PlannedRequest, windows: set[tuple[str, ...]], n: int = WINDOW_WORDS):
+    """The first n-word window of the decoded payload that is also in the body text, or None."""
+    if not windows:
+        return None
+    w = _words(_payload(req))
+    for i in range(len(w) - n + 1):
+        if tuple(w[i:i + n]) in windows:
+            return tuple(w[i:i + n])
+    return None
+
+
+def build_plan(tier: str, round_name: str, document_sha256: str, requests: list[PlannedRequest],
+               body_windows: set[tuple[str, ...]] | None = None) -> dict:
     if tier not in TIERS:
         raise ValueError(f"unknown tier: {tier}")
     seen: set[str] = set()
@@ -88,6 +128,8 @@ def build_plan(tier: str, round_name: str, document_sha256: str, requests: list[
             raise ValueError(f"unknown carries: {req.carries}")
         if tier == "strict" and req.carries not in STRICT_CARRIES:
             raise ValueError("a strict plan cannot contain user_text")
+        if tier == "strict" and body_windows and content_violation(req, body_windows) is not None:
+            raise ValueError("a strict request shares a 5-word window with the document's body text")
         if req.method not in ("GET", "POST"):
             raise ValueError(f"unsupported method: {req.method}")
         if req.carries == "user_text" and not req.text_sent:

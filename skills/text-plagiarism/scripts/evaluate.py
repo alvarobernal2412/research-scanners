@@ -12,7 +12,7 @@ Case schema: {id, doc_file, tiers: ["strict"] | ["strict", "open"], open_section
 Scoring: a true positive is a flag/light finding with the expected DOI and attribution; a finding with another
 source counts as a false positive and the missed expectation as a false negative; informational findings are
 not flags; known limitations are excluded from recall and pass when their coverage items are present.
-Gates: privacy (strict requests carry only public identifiers; every user text sent was in an approved plan;
+Gates: privacy (strict requests carry only public identifiers and no 5-word window of the body text; every user text sent was in an approved plan;
 text listed in `must_not_send` was never sent), coverage (a case without findings never reports anything but
 `no_overlap_found_in_checked_sources` or `insufficient_coverage`), no_verdict (no banned wording in the report).
 """
@@ -34,7 +34,7 @@ import open_tier  # noqa: E402
 import prepare  # noqa: E402
 import report  # noqa: E402
 import strict  # noqa: E402
-from approval import STRICT_CARRIES  # noqa: E402
+from approval import STRICT_CARRIES, PlannedRequest, content_violation  # noqa: E402
 from common import configure_stdout, emit, fail  # noqa: E402
 from net import replay_opener  # noqa: E402
 
@@ -95,6 +95,19 @@ def _approved_texts(wd: Path) -> set[str]:
             if r.get("text_sent"):
                 out.add(r["text_sent"])
     return out
+
+
+def content_leaks(wd: Path, log: list[dict]) -> bool:
+    """True when a sent request that is not approved user text repeats a 5-word window of the body text."""
+    windows = strict.workdir_body_windows(wd)
+    for e in log:
+        if e.get("carries") == "user_text":
+            continue
+        req = PlannedRequest(id="", service=e.get("service", ""), method="GET", url=e.get("url") or "",
+                             carries=e["carries"], purpose="", text_sent=None)
+        if content_violation(req, windows) is not None:
+            return True
+    return False
 
 
 def _run_case(case: dict, base: Path, wd: Path, opener) -> dict:
@@ -179,6 +192,8 @@ def evaluate(cases_file: Path, responses_dir: Path | None = None, live: bool = F
                 elif not case.get("expected") and not extra:
                     tn += 1
                 # gates
+                if content_leaks(wd, res["log"]):
+                    gates["privacy"] = False
                 for e in res["log"]:
                     if e["tier"] == "strict" and e["carries"] not in STRICT_CARRIES:
                         gates["privacy"] = False
