@@ -1,6 +1,6 @@
 # research-scanners
 
-Five Agent Skills for checking research writing, code and references, built for use with Claude Code and other agents that read `SKILL.md` skills. All three report **evidence only**: no accusation, no legal verdict, and no claim about who wrote something.
+Five Agent Skills for checking research writing, code and references, built for use with Claude Code and other agents that read `SKILL.md` skills. All five report **evidence only**: no accusation, no legal verdict, and no claim about who wrote something.
 
 | Skill | What it does | Status |
 |---|---|---|
@@ -9,8 +9,6 @@ Five Agent Skills for checking research writing, code and references, built for 
 | [`text-plagiarism`](skills/text-plagiarism/README.md) | Finds passages copied verbatim from published open-access work, with source, license and attribution status, and a coverage section that says what could not be checked | Ready |
 | [`license-compliance`](skills/license-compliance/README.md) | Checks that your dependencies' licenses are compatible with your project's license; recommends a license, and lists the ones ruled out, when you have none | Ready |
 | [`reference-check`](skills/reference-check/README.md) | Checks that every reference in a paper exists and matches the real record (authors, title, year, venue, DOI) | Ready |
-
-The unfinished skills are marked `metadata.internal: true`, so installing "all skills" should today install only the finished ones (per the CLI documentation, internal skills are hidden unless `INSTALL_INTERNAL_SKILLS=1` is set). When a skill is ready, that flag is removed and the same install command picks it up.
 
 ## Install
 
@@ -42,59 +40,7 @@ Developing locally instead? Clone the repository and run `python tests/run_all.p
 
 ## How they work
 
-All five skills are instructions (`SKILL.md`) plus local Python scripts. Claude runs the scripts, reads their JSON output and writes the report. The two plagiarism skills can talk to public services, so they share one privacy rule: **nothing derived from your work leaves your machine unless you approved the exact request.**
-
-```mermaid
-flowchart TD
-    U["You ask Claude<br/>check this draft, paper or repository"] --> C["Claude Code loads the matching skill<br/>from its SKILL.md"]
-
-    C --> T["llm-tropes<br/>local scripts only"]
-    C --> X["text-plagiarism<br/>plan/run gated, report only"]
-    C --> K["code-plagiarism<br/>ready"]
-
-    T --> T1["Extract text<br/>find LLM tells by pattern"]
-    T1 --> R["JSON result from the scripts"]
-
-    X --> X1["Strict tier, default<br/>compare locally with works you cite<br/>and papers you provide"]
-    X --> X2["Open tier, optional<br/>search phrases in open indexes"]
-    K --> K1["Strict tier, default<br/>declared dependencies and their licenses"]
-    K --> K2["Fingerprint tier, optional<br/>hashes of selected files to SCANOSS"]
-    K --> K3["Open tier, optional<br/>identifiers to Stack Exchange"]
-
-    X1 --> R
-    K1 --> R
-    X2 --> G
-    K2 --> G
-    K3 --> G
-
-    G["Plan, then your approval, then run<br/>see the next diagram"] --> R
-
-    R --> M["Claude writes the report<br/>findings, sources, licenses,<br/>what could not be checked"]
-    M --> U2["You review it<br/>evidence only, never a verdict"]
-```
-
-The optional tiers go through the approval gate, which is how nothing is sent without your yes:
-
-```mermaid
-sequenceDiagram
-    participant You
-    participant Claude
-    participant Plan as plan script
-    participant Run as run script
-    participant Svc as Public service
-
-    You->>Claude: Check this repository, allow SCANOSS on src/
-    Claude->>Plan: plan, with the files or sections you chose
-    Plan-->>Claude: Query file with every exact request and its sha256
-    Claude-->>You: Preview: exactly what would be sent, to whom, and what it reveals
-    You->>Claude: Approve, or strike requests you do not want
-    Claude->>Run: run with the approved sha256
-    Run->>Run: Refuse if the plan changed or a request is not in it
-    Run->>Svc: Only the approved requests
-    Svc-->>Run: Matches
-    Run-->>Claude: JSON result including every request that was sent
-    Claude-->>You: Report that lists the services contacted
-```
+All five skills are instructions (`SKILL.md`) plus local Python scripts. Claude runs the scripts, reads their JSON output and writes the report. The two plagiarism skills can talk to public services, so they share one privacy rule: **nothing derived from your work leaves your machine unless you approved the exact request.** Each skill's README has its own pipeline diagram, and the two plagiarism skills also show the plan, approval and run sequence.
 
 Notes:
 
