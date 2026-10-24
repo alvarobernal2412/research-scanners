@@ -397,7 +397,7 @@ class _Ctx:
         """(default_registry_is_private, {private scopes in lower case}, some config was unreadable)"""
         if dir_rel in self._npm_conf:
             return self._npm_conf[dir_rel]
-        default, scopes, possible = False, set(), False
+        default, scopes, possible = _user_npm_state()
         for d in self._dirs(dir_rel):
             if any((posixpath.join(d, f) if d else f) in self.known for f in PNPM_FILES):
                 possible = True                          # pnpm files can set registries; they are not parsed
@@ -416,6 +416,7 @@ class _Ctx:
         if dir_rel in self._pip_conf:
             return dict(self._pip_conf[dir_rel])
         state = {"index_private": False, "extra": False}
+        _user_pip_state(state)
         for d in self._dirs(dir_rel):
             for fname in ("pip.conf", "pip.ini"):
                 status, text = self.probe(d, fname)
@@ -468,6 +469,113 @@ def _decode(raw: bytes) -> str:
         except UnicodeError:
             pass
     return raw.decode("utf-8-sig", errors="replace")
+
+
+# ---- registry settings outside the project (environment, user-level files) ---------------------------
+# Read-only and fail closed: anything that is not a public registry, or cannot be read, counts as a private
+# registry. Tokens and auth lines are never read.
+
+def _env_values(*names) -> list:
+    out = []
+    for n in names:
+        for key in {n, n.lower(), n.upper()}:
+            v = os.environ.get(key)
+            if v and v.strip():
+                out.append(v.strip())
+    return out
+
+
+def _read_user_config(path) -> tuple:
+    """-> ("absent"|"bad"|"ok", text) for a file outside the project."""
+    try:
+        if not path.is_file():
+            return ("absent", None)
+        with open(path, "rb") as fh:
+            raw = fh.read(MAX_CONFIG_BYTES + 1)
+    except (OSError, RuntimeError):
+        return ("bad", None)
+    if len(raw) > MAX_CONFIG_BYTES:
+        return ("bad", None)
+    try:
+        if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+            text = raw.decode("utf-16")
+        elif b"\0" in raw:
+            text = None
+        else:
+            text = raw.decode("utf-8-sig")
+    except UnicodeError:
+        text = None
+    if text is None or re.search(r"[\x00-\x08\x0b\x0e-\x1f]", text):
+        return ("bad", None)
+    return ("ok", text)
+
+
+def _user_home() -> list:
+    try:
+        return [Path.home()]
+    except (RuntimeError, KeyError, OSError):
+        return []
+
+
+def _user_npm_state() -> tuple:
+    """(default_registry_is_private, {private scopes}, some user config was unreadable)"""
+    default, scopes, possible = False, set(), False
+    if any(not _public(v, PUBLIC_NPM_HOSTS) for v in _env_values("NPM_CONFIG_REGISTRY", "YARN_NPM_REGISTRY_SERVER")):
+        default = True
+    for key, value in os.environ.items():
+        m = re.fullmatch(r"npm_config_(@[A-Za-z0-9][A-Za-z0-9._~-]*):registry", key, re.I)
+        if m and not _public(value, PUBLIC_NPM_HOSTS):
+            scopes.add(m.group(1).lower())
+    paths = [Path(v) for v in _env_values("NPM_CONFIG_USERCONFIG", "NPM_CONFIG_GLOBALCONFIG")]
+    paths += [h / ".npmrc" for h in _user_home()]
+    for path in paths:
+        status, text = _read_user_config(path)
+        if status == "bad":
+            possible = True
+        elif status == "ok":
+            de, sc = _parse_npmrc(text.splitlines())
+            default, scopes = default or de, scopes | sc
+    return default, scopes, possible
+
+
+def _user_pip_state(state: dict) -> None:
+    for v in _env_values("PIP_INDEX_URL", "UV_INDEX_URL", "UV_DEFAULT_INDEX"):
+        if not _all_public(v.split(), PUBLIC_PY_HOSTS):
+            state["index_private"] = True
+    for v in _env_values("PIP_EXTRA_INDEX_URL", "UV_EXTRA_INDEX_URL", "UV_INDEX"):
+        if not _all_public(v.split(), PUBLIC_PY_HOSTS):
+            state["extra"] = True
+    if _env_values("PIP_FIND_LINKS", "UV_FIND_LINKS"):
+        state["extra"] = True
+    paths = [Path(v) for v in _env_values("PIP_CONFIG_FILE") if v != os.devnull]
+    for base in _user_home():
+        paths += [base / ".config" / "pip" / "pip.conf", base / ".pip" / "pip.conf", base / "pip" / "pip.ini"]
+    for var in ("APPDATA", "XDG_CONFIG_HOME"):
+        for v in _env_values(var):
+            paths += [Path(v) / "pip" / "pip.ini", Path(v) / "pip" / "pip.conf"]
+    seen = set()
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        status, text = _read_user_config(path)
+        if status == "bad":
+            state["extra"] = True
+        elif status == "ok":
+            _parse_pip_conf(text.splitlines(), state)
+    for base in _user_home():
+        status, text = _read_user_config(base / ".config" / "uv" / "uv.toml")
+        if status == "bad":
+            state["extra"] = True
+        elif status == "ok":
+            try:
+                data = tomllib.loads(text) if tomllib is not None else None
+            except (ValueError, RecursionError):
+                data = None
+            if isinstance(data, dict):
+                _parse_uv_toml(data, state)
+            else:
+                state["extra"] = True
 
 
 def _parse_npmrc(lines):
