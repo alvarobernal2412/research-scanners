@@ -99,6 +99,19 @@ def _renumber(result: dict) -> None:
             f["id"] = f"{prefix}{n}"
 
 
+def _reconcile_local(corpus_block: dict, matched_by_item: dict, corpus_checked: set, obtained: list,
+                     not_obtained: list) -> None:
+    """A loaded local file carrying the DOI of a source the strict rounds could not fetch supplies it: the
+    source leaves the not-obtained and not-loaded lists (the file itself is what was compared)."""
+    for ref in [r for r in not_obtained if (r.get("doi") or "").lower() in corpus_checked]:
+        not_obtained.remove(ref)
+        obtained.append({**ref, "reason": None, "url": None, "source": "local_corpus"})
+    for row in corpus_block["provided"]:
+        if row["kind"] == "identifier" and row["status"] != "loaded" and matched_by_item.get(row["id"]) in corpus_checked:
+            row["status"], row["reason"] = "supplied_locally", None
+    corpus_block["not_loaded"] = [r for r in corpus_block["not_loaded"] if matched_by_item.get(r["id"]) not in corpus_checked]
+
+
 def build_report(workdir: Path) -> dict:
     workdir = Path(workdir)
     doc, sections, doc_refs = load_doc(workdir)
@@ -186,6 +199,7 @@ def build_report(workdir: Path) -> dict:
     corpus_block = {"provided": [], "compared": 0, "not_loaded": []}
     corpus_ids: set[str] = set()
     corpus_checked: set[str] = set()
+    matched_by_item: dict[str, str] = {}
     for it in items:
         corpus_block["provided"].append({k: it.get(k) for k in ("id", "name", "kind", "status", "reason", "words",
                                                                  "relation")})
@@ -211,8 +225,10 @@ def build_report(workdir: Path) -> dict:
                 ref_doi = match_entry(_I, entries)[2]
             matched = (ref_doi or it.get("doi") or "").lower() or f"corpus:{it['id']}"
         corpus_ids.add(matched)
+        matched_by_item[it["id"]] = matched
         if it["status"] == "loaded":
             corpus_checked.add(matched)
+    _reconcile_local(corpus_block, matched_by_item, corpus_checked, obtained, not_obtained)
 
     ref_ids = {_entry_id(i, e) for i, e in enumerate(entries)}
     checked_ids = {_entry_id(i, e) for i, e in enumerate(entries)

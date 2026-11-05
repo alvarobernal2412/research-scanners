@@ -325,3 +325,14 @@ def test_open_tier_alone_with_unchecked_references_is_not_no_overlap(tmp_path):
     _fake_open_state(wd, 10, {})
     c = rep(wd)["coverage"]
     assert c["status"] == "insufficient_coverage"
+
+
+def test_local_file_with_same_doi_clears_not_obtained_and_not_loaded():
+    block = {"provided": [{"id": "c1", "kind": "identifier", "status": "full_text_not_obtained", "reason": "x"},
+                          {"id": "c2", "kind": "local", "status": "loaded", "reason": None}],
+             "not_loaded": [{"id": "c1", "name": "10.1/a", "status": "full_text_not_obtained", "reason": "x"},
+                            {"id": "c3", "name": "10.1/z", "status": "full_text_not_obtained", "reason": "x"}]}
+    obtained, not_obtained = [], [{"n": 1, "doi": "10.1/A", "reason": "paywalled"}, {"n": 2, "doi": "10.1/b", "reason": "paywalled"}]
+    report._reconcile_local(block, {"c1": "10.1/a", "c2": "10.1/a", "c3": "10.1/z"}, {"10.1/a"}, obtained, not_obtained)
+    assert [r["n"] for r in not_obtained] == [2] and obtained[0]["source"] == "local_corpus"
+    assert [r["id"] for r in block["not_loaded"]] == ["c3"] and block["provided"][0]["status"] == "supplied_locally"
