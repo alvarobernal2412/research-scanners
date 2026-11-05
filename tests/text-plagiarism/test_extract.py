@@ -84,7 +84,7 @@ def test_tex_section_quote_env_and_comments(tmp_path):
     doc = extract(_write(tmp_path, "a.tex", tex))
     lines = {l.no: l for l in doc.lines}
     assert lines[1].heading_level == 1 and lines[1].text == "Intro"
-    assert r"50\% sure." in lines[2].text and "hidden" not in lines[2].text
+    assert "50% sure." in lines[2].text and "hidden" not in lines[2].text
     assert lines[4].in_quote and not lines[2].in_quote and not lines[7].in_quote
     assert lines[6].heading_level == 2
     assert "bibitem" in lines[9].text

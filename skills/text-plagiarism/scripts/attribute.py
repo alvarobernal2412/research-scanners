@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from extract import Line  # noqa: E402
+from extract import TEX_CITE as _TEX_CITE, Line  # noqa: E402
 from textnorm import Sentence, Token  # noqa: E402
 
 QUOTED_MIN_FRACTION = 0.8
@@ -59,7 +59,6 @@ _YEAR = r"(?:1[5-9]\d\d|20\d\d)[a-z]?"
 _PAREN = re.compile(r"\(([^()]*?\b" + _YEAR + r"\b[^()]*)\)")
 _NARRATIVE = re.compile(
     rf"({_NAME})(?:\s+(?:et\s+al\.?|and\s+{_NAME}|&\s+{_NAME}))?\s*\(\s*({_YEAR})\s*(?:[;,][^()]*)?\)")
-_TEX_CITE = re.compile(r"\\(?:[A-Za-z]*cite[A-Za-z]*)\*?(?:\[[^\]]*\]){0,2}\{([^}]*)\}")
 _DOI = re.compile(r"(?:https?://(?:dx\.)?doi\.org/|\bdoi:\s*)(10\.\d{4,9}/[^\s\"<>]+)", re.I)
 _ARXIV = re.compile(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5}(?:v\d+)?)|arXiv:\s*(\d{4}\.\d{4,5}(?:v\d+)?)", re.I)
 _SKIP_WORDS = {"see", "cf", "e.g", "eg", "also", "compare", "for", "example", "in", "as", "by", "and", "figure", "table"}

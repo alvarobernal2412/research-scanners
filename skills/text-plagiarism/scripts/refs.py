@@ -353,9 +353,14 @@ def bibliography_from_tex(doc: Document, path: Path) -> tuple[list[RefEntry], li
                     nocite_all = True
                 elif k:
                     cited.setdefault(k, ln.no)
-        for m in _BIB_FILES.finditer(ln.text):
-            names += [n.strip() for n in m.group(1).split(",") if n.strip()]
     path, notes, records = Path(path), [], {}
+    try:                    # the extracted text drops these commands, so read them from the source file
+        raw_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        raw_lines = []
+    for raw in raw_lines:
+        for m in _BIB_FILES.finditer(re.sub(r"(?<!\\)%.*$", "", raw)):
+            names += [n.strip() for n in m.group(1).split(",") if n.strip()]
     for name in names:
         f = path.parent / (name if name.lower().endswith(".bib") else name + ".bib")
         try:

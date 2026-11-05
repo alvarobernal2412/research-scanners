@@ -186,11 +186,100 @@ def _strip_tex_comment(line: str) -> str:
     return re.sub(r"(?<!\\)%.*$", "", line)
 
 
+# A citation command is kept verbatim in the text (attribution and the .bib reader need it); the tokenizer
+# ignores it, so it never counts as a word of the passage.
+TEX_CITE = re.compile(r"\\(?:[A-Za-z]*cite[A-Za-z]*)\*?(?:\[[^\]]*\]){0,2}\{([^}]*)\}")
+
+# Environments whose content is not prose: dropped from the text (the lines stay, empty, so line numbers hold).
+_TEX_SKIP_ENVS = {"tikzpicture", "equation", "align", "alignat", "eqnarray", "gather", "multline", "displaymath",
+                  "math", "verbatim", "lstlisting", "minted", "algorithmic", "algorithm", "split"}
+_TEX_ENV = re.compile(r"\\(begin|end)\{([A-Za-z]+)\*?\}")
+_TEX_PREAMBLE_KEEP = re.compile(r"\s*\\(?:title|author|institute|email|date|subtitle)\b")
+_TEX_DROP_WITH_ARG = re.compile(
+    r"\\(?:label|ref|eqref|autoref|cref|Cref|pageref|nameref|includegraphics|input|include|usepackage|"
+    r"documentclass|bibliographystyle|bibliography|addbibresource|vspace|hspace|vskip|index|url|footnotemark|"
+    r"thispagestyle|pagestyle|setlength|newcommand|renewcommand|def|definecolor|graphicspath)\*?"
+    r"(?:\[[^\]]*\])*(?:\{[^{}]*\})*")
+_TEX_PREFIX_ARG = re.compile(r"\\(?:textcolor|colorbox|href|color)\*?(?:\[[^\]]*\])?\{[^{}]*\}")
+_TEX_NAMES = {"ackname": "Acknowledgements", "discintname": "Disclosure of Interests", "refname": "References",
+              "abstractname": "Abstract", "contentsname": "Contents"}
+_TEX_SYMBOLS = {"&": "&", "%": "%", "_": "_", "#": "#", "$": "$", "{": "", "}": "", "\\": " ", ",": " ", ";": " ",
+                ":": " ", "!": "", " ": " ", "ss": "\u00df", "o": "\u00f8", "O": "\u00d8", "ae": "\u00e6",
+                "AE": "\u00c6", "l": "\u0142", "L": "\u0141", "i": "i", "j": "j"}
+_TEX_ACCENT = {'"': "\u0308", "'": "\u0301", "`": "\u0300", "^": "\u0302", "~": "\u0303", "=": "\u0304",
+               ".": "\u0307", "v": "\u030c", "c": "\u0327", "u": "\u0306", "H": "\u030b"}
+_TEX_ACCENTED = re.compile(r"\\([\"'`^~=.]|[vcuH](?![A-Za-z]))\s*(?:\{\\?([A-Za-z])\}|\\?([A-Za-z]))")
+_TEX_MATH = re.compile(r"(?<!\\)\$\$.*?(?<!\\)\$\$|(?<!\\)\$[^$]*(?<!\\)\$|\\\(.*?\\\)|\\\[.*?\\\]")
+_TEX_NAME_WORD = re.compile(r"\\([A-Za-z]+)\*?")
+
+
+def _tex_accent(m: re.Match) -> str:
+    return unicodedata.normalize("NFC", (m.group(2) or m.group(3)) + _TEX_ACCENT[m.group(1)])
+
+
+def _tex_symbol(m: re.Match) -> str:
+    return _TEX_SYMBOLS.get(m.group(1), "")
+
+
+def _tex_plain(seg: str) -> str:
+    """One piece of LaTeX (no citation command in it) as the text a reader sees."""
+    seg = _TEX_MATH.sub(" ", seg)
+    seg = _TEX_DROP_WITH_ARG.sub(" ", seg)
+    seg = _TEX_PREFIX_ARG.sub("", seg)
+    seg = _TEX_ENV.sub(" ", seg)
+    seg = _TEX_ACCENTED.sub(_tex_accent, seg)
+    seg = _TEX_NAME_WORD.sub(lambda m: _TEX_NAMES.get(m.group(1), _TEX_SYMBOLS.get(m.group(1), "")), seg)
+    seg = re.sub(r"\\([&%_#${}\\,;:! ])", _tex_symbol, seg)
+    seg = seg.replace("``", "\u201c").replace("''", "\u201d").replace("---", "\u2014").replace("--", "\u2013")
+    seg = seg.replace("~", " ").replace("{", "").replace("}", "")
+    return seg
+
+
+def tex_to_text(line: str) -> str:
+    """A line of LaTeX as near-rendered text: formatting commands and their wrappers are removed and the
+    words they wrap are kept, math, labels, references and figures are dropped. Citation commands stay."""
+    out, pos = [], 0
+    for m in TEX_CITE.finditer(line):
+        out.append(_tex_plain(line[pos:m.start()]))
+        out.append(m.group())
+        pos = m.end()
+    out.append(_tex_plain(line[pos:]))
+    return re.sub(r"[ \t]{2,}", " ", "".join(out)).strip()
+
+
 def _from_tex(data: bytes) -> list[Line]:
     out = []
     in_quote = False
-    for i, raw in enumerate(split_lines(_decode(data)), 1):
-        text = _strip_tex_comment(raw).rstrip()
+    raw_lines = [_strip_tex_comment(r).rstrip() for r in split_lines(_decode(data))]
+    in_preamble = any(r.strip().startswith("\\begin{document}") for r in raw_lines)
+    skip: list[str] = []          # open non-prose environments
+    in_bib = False
+    display_math = False
+    for i, text in enumerate(raw_lines, 1):
+        if in_bib or "\\begin{thebibliography}" in text:
+            in_bib = "\\end{thebibliography}" not in text
+            out.append(Line(i, text))                 # the reference list is parsed from its source form
+            continue
+        if in_preamble:
+            if text.strip().startswith("\\begin{document}"):
+                in_preamble = False
+                out.append(Line(i, ""))
+            else:
+                out.append(Line(i, tex_to_text(text) if _TEX_PREAMBLE_KEEP.match(text) else ""))
+            continue
+        was_skipping = bool(skip)
+        for kind, name in _TEX_ENV.findall(text):
+            if name in _TEX_SKIP_ENVS and kind == "begin":
+                skip.append(name)
+            elif kind == "end" and name in skip:
+                skip.remove(name)
+        if text.count("$$") % 2 == 1:
+            display_math = not display_math
+            out.append(Line(i, ""))
+            continue
+        if was_skipping or skip or display_math:
+            out.append(Line(i, ""))
+            continue
         if _TEX_QUOTE_BEGIN.search(text):
             in_quote = True
             out.append(Line(i, "", in_quote=True))
@@ -201,9 +290,9 @@ def _from_tex(data: bytes) -> list[Line]:
             continue
         m = _TEX_SECTION.search(text)
         if m:
-            out.append(Line(i, m.group(2).strip(), heading_level=_TEX_LEVEL[m.group(1)]))
+            out.append(Line(i, tex_to_text(m.group(2)), heading_level=_TEX_LEVEL[m.group(1)]))
         else:
-            out.append(Line(i, text, in_quote=in_quote))
+            out.append(Line(i, tex_to_text(text), in_quote=in_quote))
     return out
 
 

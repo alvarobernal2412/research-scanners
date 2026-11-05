@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from extract import Line  # noqa: E402
+from extract import TEX_CITE, Line  # noqa: E402
 
 GLUED_TOKEN_LEN = 20
 GLUED_MAX_RATIO = 0.02
@@ -70,7 +70,10 @@ def tokenize(lines: list[Line]) -> list[Token]:
     # raw pieces: (line no, start, end, raw text)
     pieces: list[tuple[int, int, int, str]] = []
     for ln in lines:
+        cites = [(c.start(), c.end()) for c in TEX_CITE.finditer(ln.text)] if "\\" in ln.text else []
         for m in _WORD.finditer(ln.text):
+            if any(s <= m.start() < e for s, e in cites):        # a LaTeX citation command is not a word
+                continue
             pieces.append((ln.no, m.start(), m.end(), m.group()))
     # join lone hyphens between lower-case words on the same line ("data - driven")
     out: list[Token] = []
