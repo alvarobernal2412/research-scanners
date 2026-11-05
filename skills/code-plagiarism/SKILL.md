@@ -1,7 +1,6 @@
 ---
 name: code-plagiarism
-description: >-
-  Checks a codebase for code taken from Stack Overflow answers, open-source projects and other licensed sources, and reports candidate origins, licence evidence (per file header, per Stack Overflow revision), attribution status and obligation text. Use when asked about copied or reused code, licence compliance of snippets, missing attribution, or "did this come from Stack Overflow / GitHub". Report only: no legal verdict and no claim about who copied from whom. Every step that sends data derived from the code needs the user's approval of the exact request.
+description: "Checks a codebase for code taken from Stack Overflow answers, open-source projects and other licensed sources, and reports candidate origins, licence evidence (per file header, per Stack Overflow revision), attribution status and obligation text. Use when asked about copied or reused code, licence compliance of snippets, missing attribution, or \"did this come from Stack Overflow / GitHub\". Report only: no legal verdict and no claim about who copied from whom. Every step that sends data derived from the code needs the user's approval of the exact request."
 license: Apache-2.0
 ---
 

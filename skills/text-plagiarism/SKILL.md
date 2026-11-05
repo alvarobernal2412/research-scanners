@@ -1,7 +1,6 @@
 ---
 name: text-plagiarism
-description: >-
-  Checks a paper, thesis, report or draft for passages copied word for word from published open-access papers (book hits are only snippet-level unverified candidates), and for copied text that lacks quotation marks or a citation. Reports the source (DOI or URL), its license, the match length and how the passage is attributed (quoted and cited, cited only, unattributed), always opening with a coverage section that says what could not be checked. Use when asked to check for plagiarism, copied or unattributed passages, or missing quotation of cited sources. Privacy-gated and report-only: no legal verdict, no score, no claim about who wrote the text.
+description: "Checks a paper, thesis, report or draft for passages copied word for word from published open-access papers (book hits are only snippet-level unverified candidates), and for copied text that lacks quotation marks or a citation. Reports the source (DOI or URL), its license, the match length and how the passage is attributed (quoted and cited, cited only, unattributed), always opening with a coverage section that says what could not be checked. Use when asked to check for plagiarism, copied or unattributed passages, or missing quotation of cited sources. Privacy-gated and report-only: no legal verdict, no score, no claim about who wrote the text."
 license: Apache-2.0
 ---
 
