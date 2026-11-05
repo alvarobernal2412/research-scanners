@@ -46,3 +46,13 @@ def test_missing_bib_falls_back_to_bbl(tmp_path):
 def test_prepare_uses_bib(tmp_path):
     summary, _ = prepare(write(tmp_path), tmp_path / "w")
     assert summary["references"]["count"] == 2 and "references_not_found" not in summary["warnings"]
+
+
+def test_arxiv_id_and_doi_read_from_note_fields():
+    ents = parse_bib_entries("@misc{a, title={T}, year={2026}, note={arXiv:2604.22750}}\n"
+                             "@misc{b, title={U}, year={2025}, howpublished={https://arxiv.org/abs/2512.18470}}\n"
+                             "@misc{c, title={V}, year={2020}, note={doi:10.1234/xyz}}\n")
+    assert [e.get("arxiv") for e in ents] == ["2604.22750", "2512.18470", None] and ents[2]["doi"] == "10.1234/xyz"
+    import corpus
+    recs = corpus.parse_bib("@misc{a, title={T}, year={2026}, note={arXiv:2604.22750}}")
+    assert recs[0]["arxiv"] == "2604.22750" and recs[0]["identifier"] == "arXiv:2604.22750"

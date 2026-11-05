@@ -273,6 +273,18 @@ def _bib_value(text: str, i: int) -> tuple[str, int]:
     return m.group(), m.end()
 
 
+_ARXIV_FIELD = re.compile(r"arxiv[^0-9]{0,25}(\d{4}\.\d{4,5})", re.I)
+
+
+def arxiv_in_fields(fields: dict) -> str | None:
+    """An arXiv id written in a note, howpublished, journal or url field, e.g. note = {arXiv:2604.22750}."""
+    for k in ("note", "howpublished", "journal", "url"):
+        m = _ARXIV_FIELD.search(fields.get(k, ""))
+        if m:
+            return m.group(1)
+    return None
+
+
 def parse_bib_entries(text: str) -> list[dict]:
     """Every entry of a .bib file, with or without a public identifier."""
     out = []
@@ -293,12 +305,15 @@ def parse_bib_entries(text: str) -> list[dict]:
         rec = {"key": m.group(2), "title": _tex_clean(fields.get("title", "")) or None, "authors": authors,
                "venue": _tex_clean(fields.get("journal") or fields.get("booktitle") or fields.get("publisher") or "") or None,
                "year": (re.search(r"\d{4}", fields.get("year", "")) or [None])[0]}
-        raw_doi = _DOI.search(fields.get("doi", "") or fields.get("url", ""))
+        raw_doi = _DOI.search(fields.get("doi", "") or fields.get("url", "") or fields.get("note", "")
+                              or fields.get("howpublished", ""))
         if raw_doi:
             rec["doi"] = _clean_doi(raw_doi.group())
         eprint = fields.get("eprint", "").strip()
         if re.fullmatch(r"\d{4}\.\d{4,5}(v\d+)?", eprint):
             rec["arxiv"] = eprint.split("v")[0]
+        elif (noted := arxiv_in_fields(fields)):
+            rec["arxiv"] = noted
         url = fields.get("url", "").strip()
         if url.startswith("http") and not raw_doi:
             rec["url"] = url

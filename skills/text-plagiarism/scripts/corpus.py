@@ -112,6 +112,9 @@ def parse_bib(text: str) -> list[dict]:
         elif fields.get("eprint") and re.fullmatch(r"\d{4}\.\d{4,5}(v\d+)?", fields["eprint"]):
             rec["arxiv"] = fields["eprint"].split("v")[0]
             rec["identifier"] = "arXiv:" + rec["arxiv"]
+        elif (noted := _ARXIV_NEW.search(fields.get("note", "") + " " + fields.get("howpublished", ""))):
+            rec["arxiv"] = noted.group(1)          # note = {arXiv:2604.22750}
+            rec["identifier"] = "arXiv:" + rec["arxiv"]
         elif fields.get("url"):
             u = fields["url"].strip()
             if _DOI.search(u):
