@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import configure_stdout, emit, fail  # noqa: E402
 from extract import Document, ExtractError, Line, extract  # noqa: E402
 from net import cache_root  # noqa: E402
-from refs import RefEntry, parse_references  # noqa: E402
+from refs import RefEntry, bibliography_from_tex, parse_references  # noqa: E402
 from sections import Section, default_open_sections, detect_sections, excluded_lines  # noqa: E402
 from textnorm import GLUED_MAX_RATIO, glued_ratio, tokenize  # noqa: E402
 
@@ -34,7 +34,10 @@ def prepare(path: Path, workdir: Path | None = None) -> tuple[dict, Path]:
     warnings = list(doc.warnings)
     if glued_ratio(body_tokens) > GLUED_MAX_RATIO:
         warnings.append("glued_words")
-    if not any(s.kind == "references" for s in sections):
+    if not refs and doc.fmt == "tex":              # \bibliography{...}: read the .bib / .bbl next to the file
+        refs, notes = bibliography_from_tex(doc, Path(path))
+        warnings.extend(notes)
+    if not refs and not any(s.kind == "references" for s in sections):
         warnings.append("references_not_found")
     doc.warnings = warnings
     workdir = Path(workdir) if workdir else default_workdir(doc.sha256)

@@ -53,6 +53,8 @@ python -I scripts/open_tier.py plan --workdir W     # next round: second OpenAle
 
 **`--corpus`** (repeatable) accepts a document file, a directory, a `.bib` file, a `.txt` list of DOIs, arXiv ids or URLs, and a `corpus.json` manifest `[{"file": "a.pdf", "doi": "...", "title": "...", "authors": "...", "year": 2020, "relation": "related" | "own"}]` that gives metadata for local files. Local files are compared on your machine and produce no request; identifiers are public identifiers and are fetched in the strict rounds.
 
+**LaTeX with an external bibliography:** if a `.tex` file has no inline `thebibliography` block, `prepare.py` reads the `.bib` files named by the bibliography or addbibresource command (next to the `.tex`), keeps the entries the text actually cites (all of them after `nocite{*}`), and falls back to a sibling `.bbl`. Entries without a DOI are resolved through Crossref like any reference string. Missing files and cited keys absent from the `.bib` appear in `warnings`.
+
 ## Pipeline
 
 ```mermaid

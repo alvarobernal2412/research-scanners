@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from approval import PlannedRequest  # noqa: E402
-from attribute import arxiv_key, author_year_key, doi_key, numeric_key, tex_key  # noqa: E402
+from attribute import _TEX_CITE, arxiv_key, author_year_key, doi_key, numeric_key, tex_key  # noqa: E402
 from extract import Document  # noqa: E402
 from net import Response  # noqa: E402
 from sections import Section  # noqa: E402
@@ -237,6 +237,128 @@ def _split_blocks(rows) -> list[RefEntry]:
     if cur:
         groups.append(cur)
     return [_build(None, g) for g in groups]
+
+
+# ------------------------------------------------- LaTeX: external .bib / .bbl bibliography
+
+_BIB_FILES = re.compile(r"\\(?:bibliography|addbibresource)\*?(?:\[[^\]]*\])?\{([^}]*)\}")
+_BIB_START = re.compile(r"@(\w+)\s*\{\s*([^,\s{}]*)\s*,")
+_ACCENT = re.compile(r"\\[`'^\"~=.](?:\{(\w)\}|(\w))")
+_ACCENTED = {'"': "̈", "'": "́", "`": "̀", "^": "̂", "~": "̃"}
+
+
+def _tex_clean(value: str) -> str:
+    def accent(m: re.Match) -> str:
+        return unicodedata.normalize("NFC", (m.group(1) or m.group(2)) + _ACCENTED.get(m.group(0)[1], ""))
+
+    value = _ACCENT.sub(accent, value).replace("\\&", "&").replace("~", " ").replace("--", "\u2013")
+    value = re.sub(r"\\[A-Za-z]+\*?", "", value)
+    return re.sub(r"\s+", " ", re.sub(r"[{}]", "", value)).strip()
+
+
+def _bib_value(text: str, i: int) -> tuple[str, int]:
+    """The value starting at text[i] (braced, quoted or bare) and the index after it."""
+    if text[i] == "{":
+        depth, j = 1, i + 1
+        while j < len(text) and depth:
+            depth += {"{": 1, "}": -1}.get(text[j], 0)
+            j += 1
+        return text[i + 1:j - 1], j
+    if text[i] == '"':
+        j = i + 1
+        while j < len(text) and text[j] != '"':
+            j += 2 if text[j] == "\\" else 1
+        return text[i + 1:j], j + 1
+    m = re.compile(r"[^,}\s]*").match(text, i)
+    return m.group(), m.end()
+
+
+def parse_bib_entries(text: str) -> list[dict]:
+    """Every entry of a .bib file, with or without a public identifier."""
+    out = []
+    for m in _BIB_START.finditer(text):
+        if m.group(1).lower() in ("comment", "string", "preamble"):
+            continue
+        fields, i = {}, m.end()
+        while i < len(text):
+            f = re.compile(r"\s*(\w+)\s*=\s*").match(text, i)
+            if not f:
+                if text[i:i + 1].isspace() or text[i:i + 1] == ",":
+                    i += 1
+                    continue
+                break
+            value, i = _bib_value(text, f.end()) if f.end() < len(text) else ("", f.end())
+            fields[f.group(1).lower()] = value
+        authors = [a.strip() for a in re.split(r"\s+and\s+", _tex_clean(fields.get("author", ""))) if a.strip()]
+        rec = {"key": m.group(2), "title": _tex_clean(fields.get("title", "")) or None, "authors": authors,
+               "venue": _tex_clean(fields.get("journal") or fields.get("booktitle") or fields.get("publisher") or "") or None,
+               "year": (re.search(r"\d{4}", fields.get("year", "")) or [None])[0]}
+        raw_doi = _DOI.search(fields.get("doi", "") or fields.get("url", ""))
+        if raw_doi:
+            rec["doi"] = _clean_doi(raw_doi.group())
+        eprint = fields.get("eprint", "").strip()
+        if re.fullmatch(r"\d{4}\.\d{4,5}(v\d+)?", eprint):
+            rec["arxiv"] = eprint.split("v")[0]
+        url = fields.get("url", "").strip()
+        if url.startswith("http") and not raw_doi:
+            rec["url"] = url
+        out.append(rec)
+    return out
+
+
+def _bib_entry_to_ref(rec: dict, line: int) -> RefEntry:
+    surnames = [a.split(",")[0].strip() if "," in a else a.split()[-1] for a in rec["authors"]]
+    names = ", ".join(rec["authors"])
+    text = f"{names}: {rec['title'] or ''}. {rec['venue'] or ''} ({rec['year'] or ''})."
+    entry = RefEntry(n=None, text=re.sub(r"\s+", " ", text).strip(), line_start=line, line_end=line,
+                     doi=rec.get("doi"), arxiv=rec.get("arxiv"), url=rec.get("url"),
+                     first_author=surnames[0] if surnames else None, year=rec["year"], tex_key=rec["key"],
+                     title=None)
+    if entry.doi:
+        entry.resolution, entry.resolved_doi = "doi_in_text", entry.doi
+    elif entry.arxiv:
+        entry.resolution = "arxiv_in_text"
+    elif _UNPUBLISHED.search(entry.text):
+        entry.resolution = "not_sent_unpublished"
+    return entry
+
+
+def bibliography_from_tex(doc: Document, path: Path) -> tuple[list[RefEntry], list[str]]:
+    """References of a .tex file that uses \bibliography / \addbibresource: the .bib entries whose keys
+    the text cites (all of them after \nocite{*}), else the sibling .bbl. Returns (entries, notes)."""
+    if doc.fmt != "tex":
+        return [], []
+    cited: dict[str, int] = {}
+    names: list[str] = []
+    nocite_all = False
+    for ln in doc.lines:
+        for m in _TEX_CITE.finditer(ln.text):
+            for k in (k.strip() for k in m.group(1).split(",")):
+                if k == "*":
+                    nocite_all = True
+                elif k:
+                    cited.setdefault(k, ln.no)
+        for m in _BIB_FILES.finditer(ln.text):
+            names += [n.strip() for n in m.group(1).split(",") if n.strip()]
+    path, notes, records = Path(path), [], {}
+    for name in names:
+        f = path.parent / (name if name.lower().endswith(".bib") else name + ".bib")
+        try:
+            for rec in parse_bib_entries(f.read_text(encoding="utf-8", errors="replace")):
+                records.setdefault(rec["key"], rec)
+        except OSError:
+            notes.append(f"bib_file_not_found:{f.name}")
+    if records:
+        keys = list(records) if nocite_all else [k for k in records if k in cited]
+        notes += [f"cited_key_not_in_bib:{k}" for k in cited if k not in records]
+        return [_bib_entry_to_ref(records[k], cited.get(k, 0)) for k in sorted(keys, key=lambda k: cited.get(k, 1 << 30))], notes
+    bbl = path.with_suffix(".bbl")
+    if bbl.is_file():
+        rows = [(i, _tex_clean(t) if not _BIBITEM.match(t.strip()) else t)
+                for i, t in enumerate(bbl.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
+                if t.strip() and not t.strip().startswith(("\\begin{thebib", "\\end{thebib"))]
+        return _split_bibitems(rows), notes
+    return [], notes
 
 
 # ----------------------------------------------------------------- Crossref
